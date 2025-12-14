@@ -8,7 +8,12 @@ import { z } from 'zod'
  * @param {string} options.tag - Tag para agrupar as rotas na documentação Swagger
  * @param {string} [options.summary] - Resumo opcional das rotas
  * @param {object} [options.schemas] - Schemas Zod para validação (createSchema, updateSchema, entitySchema)
- * @param {object} [options.middleware] - Middleware personalizado para aplicar nas rotas
+ * @param {object} [options.middleware] - Middleware personalizado para aplicar em todas as rotas
+ * @param {Array} [options.listMiddleware] - Middleware específico para GET / e GET /all
+ * @param {Array} [options.getMiddleware] - Middleware específico para GET /:id
+ * @param {Array} [options.postMiddleware] - Middleware específico para POST /
+ * @param {Array} [options.putMiddleware] - Middleware específico para PUT /:id
+ * @param {Array} [options.deleteMiddleware] - Middleware específico para DELETE /:id
  * @param {string} [options.entityName] - Nome da entidade (usado para gerar descrições)
  */
 function baseRouter(fastify, controller, options = {}) {
@@ -17,6 +22,11 @@ function baseRouter(fastify, controller, options = {}) {
 		summary = '',
 		schemas = {},
 		middleware = [],
+		listMiddleware = middleware,
+		getMiddleware = middleware,
+		postMiddleware = middleware,
+		putMiddleware = middleware,
+		deleteMiddleware = middleware,
 		entityName = tag?.toLowerCase() || 'item'
 	} = options
 
@@ -24,7 +34,12 @@ function baseRouter(fastify, controller, options = {}) {
 
 	const { all, fetch, one, post, put, del } = controller
 
-	const defaultMiddleware = middleware.length > 0 ? middleware : []
+	// Use default middleware if specific ones not provided
+	const listMiddlewareArray = listMiddleware?.length > 0 ? listMiddleware : middleware
+	const getMiddlewareArray = getMiddleware?.length > 0 ? getMiddleware : middleware
+	const postMiddlewareArray = postMiddleware?.length > 0 ? postMiddleware : middleware
+	const putMiddlewareArray = putMiddleware?.length > 0 ? putMiddleware : middleware
+	const deleteMiddlewareArray = deleteMiddleware?.length > 0 ? deleteMiddleware : middleware
 
 	const errorSchema = z.object({
 		error: z.string().optional(),
@@ -70,7 +85,7 @@ function baseRouter(fastify, controller, options = {}) {
 
 	// Rota POST - Criar novo registro
 	fastify.post('/', {
-		preValidation: defaultMiddleware,
+		preValidation: postMiddlewareArray,
 		handler: post,
 		schema: {
 			tags: [tag],
@@ -86,7 +101,7 @@ function baseRouter(fastify, controller, options = {}) {
 
 	// Rota PUT - Atualizar registro existente
 	fastify.put('/:id', {
-		preValidation: defaultMiddleware,
+		preValidation: putMiddlewareArray,
 		handler: put,
 		schema: {
 			tags: [tag],
@@ -106,7 +121,7 @@ function baseRouter(fastify, controller, options = {}) {
 
 	// Rota GET - Listar todos os registros
 	fastify.get('/all', {
-		preValidation: defaultMiddleware,
+		preValidation: listMiddlewareArray,
 		handler: all,
 		schema: {
 			tags: [tag],
@@ -126,7 +141,7 @@ function baseRouter(fastify, controller, options = {}) {
 
 	// Rota GET / - Busca paginada
 	fastify.get('/', {
-		preValidation: defaultMiddleware,
+		preValidation: listMiddlewareArray,
 		handler: fetch,
 		schema: {
 			tags: [tag],
@@ -146,7 +161,7 @@ function baseRouter(fastify, controller, options = {}) {
 
 	// Rota GET /:id - Obter um registro por ID
 	fastify.get('/:id', {
-		preValidation: defaultMiddleware,
+		preValidation: getMiddlewareArray,
 		handler: one,
 		schema: {
 			tags: [tag],
@@ -162,7 +177,7 @@ function baseRouter(fastify, controller, options = {}) {
 
 	// Rota DELETE /:id - Excluir registro por ID
 	fastify.delete('/:id', {
-		preValidation: defaultMiddleware,
+		preValidation: deleteMiddlewareArray,
 		handler: del,
 		schema: {
 			tags: [tag],

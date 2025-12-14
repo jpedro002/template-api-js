@@ -1,5 +1,5 @@
 import swagger from '@fastify/swagger'
-import swaggerUi from '@fastify/swagger-ui'
+import scalarApiReference from '@scalar/fastify-api-reference'
 import fp from 'fastify-plugin'
 import {
 	jsonSchemaTransform,
@@ -45,24 +45,35 @@ export default fp(async fastify => {
 		jsonSchemaTransform: jsonSchemaTransformObject
 	})
 
-	// Registrar Swagger UI
-	await fastify.register(swaggerUi, {
+	// Registrar Scalar
+	await fastify.register(scalarApiReference, {
 		routePrefix: '/docs',
-		uiConfig: {
-			docExpansion: 'list',
-			deepLinking: true,
-			defaultModelsExpandDepth: 2,
-			defaultModelExpandDepth: 2,
-			tagsSorter: 'alpha',
-			operationsSorter: 'method',
-			filter: true,
-			tryItOutEnabled: true,
-			supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
-			persistAuthorization: true
-		},
-		staticCSP: true,
-		transformSpecificationClone: true
+		configuration: {
+			layout: 'modern',
+			theme: 'elysiajs',
+			hideClientButton: false,
+			showSidebar: true,
+			showDeveloperTools: 'localhost',
+			showToolbar: 'localhost',
+			operationTitleSource: 'summary',
+			persistAuth: false,
+			telemetry: true,
+			isEditable: false,
+			isLoading: false,
+			hideModels: false,
+			documentDownloadType: 'both',
+			hideTestRequestButton: false,
+			hideSearch: false,
+			showOperationId: false,
+			hideDarkModeToggle: false,
+			withDefaultFonts: true,
+			defaultOpenAllTags: false,
+			expandAllModelSections: false,
+			expandAllResponses: false,
+			orderSchemaPropertiesBy: 'alpha',
+			orderRequiredPropertiesFirst: true
+		}
 	})
 
-	fastify.log.info('Plugin Swagger registrado com sucesso')
+	fastify.log.info('Plugin Scalar registrado com sucesso')
 })

@@ -1,9 +1,6 @@
 import cors from '@fastify/cors'
-import dotenv from 'dotenv'
 import fp from 'fastify-plugin'
 import { settings } from 'src/config'
-
-dotenv.config()
 
 export default fp(async fastify => {
 	console.log('CORS_ORIGIN:', settings.CORS_ORIGIN)

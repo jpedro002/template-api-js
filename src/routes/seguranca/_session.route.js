@@ -34,16 +34,18 @@ export const sessionRoutes = fastify => {
 	const GetSessionSchema = {
 		tags: ['Segurança - Autenticação'],
 		summary: 'Obter dados da sessão atual',
-		description: 'Retorna dados completos do usuário autenticado',
+		description: 'Retorna dados do usuário autenticado com roles e permissões',
 		response: {
 			200: z.object({
 				usuario: z.object({
-					id: z.string().describe('ID do usuário (UUID)'),
+					id: z.string().uuid().describe('ID do usuário (UUID)'),
 					email: z.email().describe('Email do usuário'),
 					login: z.string().describe('Login do usuário'),
 					name: z.string().describe('Nome completo do usuário'),
-					role: z.string().describe('Role do usuário'),
+					roles: z.array(z.string()).describe('Roles do usuário'),
+					permissions: z.array(z.string()).describe('Permissões do usuário'),
 					createdAt: z.date().describe('Data de criação (ISO 8601)'),
+					updatedAt: z.date().describe('Data de atualização (ISO 8601)'),
 					active: z.boolean().describe('Status ativo do usuário')
 				})
 			}),

@@ -15,17 +15,97 @@ model User {
   email         String   @unique
   login         String   @unique @db.VarChar(90)
   password_hash String
-  role          Role
   name          String   @db.VarChar(90)
-  createdAt     DateTime @default(now())
   active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userRoles       UserRole[]
+  userPermissions UserPermission[]
 
   @@map("users")
   @@schema("seguranca")
 }
 
-enum Role {
-  ADMIN
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+  @@schema("seguranca")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  identifier  String   @unique
+  name        String
+  description String?
+  category    String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  userPermissions UserPermission[]
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+  @@schema("seguranca")
+}
+
+model UserRole {
+  id         String    @id @default(uuid())
+  userId     String
+  roleId     String
+  assignedAt DateTime  @default(now())
+  assignedBy String?
+  expiresAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+  @@schema("seguranca")
+}
+
+model UserPermission {
+  id           String    @id @default(uuid())
+  userId       String
+  permissionId String
+  grantedAt    DateTime  @default(now())
+  grantedBy    String?
+  expiresAt    DateTime?
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId])
+  @@index([userId])
+  @@index([permissionId])
+  @@map("user_permissions")
+  @@schema("seguranca")
+}
+
+model RolePermission {
+  id           String   @id @default(uuid())
+  roleId       String
+  permissionId String
+  grantedAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
   @@schema("seguranca")
 }

@@ -1,24 +1,22 @@
-FROM node:22-alpine3.21 AS build
+FROM oven/bun:latest AS build
 
-RUN apk add --no-cache openssl vim bash curl wget
+RUN apt-get update && apt-get install -y openssl vim bash curl wget && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json bun.lockb ./
 
-RUN npm install -g pnpm
-
-RUN pnpm install
+RUN bun install
 
 COPY . .
 
-RUN pnpm build
+RUN bun run build
 
-RUN pnpm prisma generate
+RUN bunx prisma generate
 
-FROM node:22-alpine3.21
+FROM oven/bun:latest
 
-RUN apk add --no-cache openssl vim bash tzdata curl
+RUN apt-get update && apt-get install -y openssl vim bash curl tzdata && rm -rf /var/lib/apt/lists/*
 
 ENV TZ=America/Fortaleza
 
@@ -26,11 +24,9 @@ WORKDIR /app
 
 COPY --from=build /app/dist /app/dist
 COPY --from=build /app/node_modules /app/node_modules
-COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
+COPY --from=build /app/package.json /app/bun.lockb ./
 COPY --from=build /app/prisma /app/prisma ./
-
-RUN npm install -g pnpm
 
 EXPOSE 3000
 
-CMD ["pnpm", "start"]
+CMD ["bun", "start"]

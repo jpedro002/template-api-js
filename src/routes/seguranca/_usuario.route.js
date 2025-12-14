@@ -1,5 +1,6 @@
 import { usuarioController } from 'src/controllers/seguranca'
 import { baseRouter } from 'src/routes'
+import { authenticate, authorize } from 'src/middleware'
 import { z } from 'zod'
 
 const UsuarioCreateSchema = z.object({
@@ -28,7 +29,6 @@ const UsuarioUpdateSchema = z.object({
 		.max(90, 'Login deve ter no máximo 90 caracteres')
 		.optional(),
 	email: z
-		.string()
 		.email('Email inválido')
 		.max(200, 'Email deve ter no máximo 200 caracteres')
 		.optional(),
@@ -46,13 +46,20 @@ const UsuarioUpdateSchema = z.object({
 export function usuarioRoutes(fastify) {
 	const controller = usuarioController()
 
-	const middleware = [fastify.authenticate]
+	const listMiddleware = [authenticate]
+	const createMiddleware = [authenticate, authorize('users:create')]
+	const updateMiddleware = [authenticate, authorize('users:update')]
+	const deleteMiddleware = [authenticate, authorize('users:delete')]
 
 	baseRouter(fastify, controller, {
 		tag: 'segurança - Usuários',
 		summary: 'Gerenciamento de Usuários',
 		entityName: 'usuário',
-		middleware: middleware,
+		listMiddleware: listMiddleware,
+		getMiddleware: listMiddleware,
+		postMiddleware: createMiddleware,
+		putMiddleware: updateMiddleware,
+		deleteMiddleware: deleteMiddleware,
 		schemas: {
 			createSchema: UsuarioCreateSchema,
 			updateSchema: UsuarioUpdateSchema,
@@ -64,7 +71,7 @@ export function usuarioRoutes(fastify) {
 	fastify.route({
 		method: 'POST',
 		url: '/update-password',
-		preHandler: middleware,
+		preHandler: listMiddleware,
 		schema: {
 			tags: ['segurança - Usuários'],
 			summary: 'Atualizar senha do usuário',

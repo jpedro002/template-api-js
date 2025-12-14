@@ -1,5 +1,26 @@
 import { Prisma } from '@prisma/client'
 
+/**
+ * Verifica se o erro é de validação Zod do Fastify
+ */
+function hasZodFastifySchemaValidationErrors(error) {
+	return (
+		error?.statusCode === 400 &&
+		error?.code === 'FST_ERR_VALIDATION' &&
+		Array.isArray(error?.validation)
+	)
+}
+
+/**
+ * Verifica se o erro é de serialização de response
+ */
+function isResponseSerializationError(error) {
+	return (
+		error?.statusCode === 500 &&
+		error?.code === 'FST_ERR_REP_SERIALIZATION'
+	)
+}
+
 // Novo errorHandler para Fastify: (error, request, reply)
 export function errorHandler(error, request, reply) {
 	// console.log(error)

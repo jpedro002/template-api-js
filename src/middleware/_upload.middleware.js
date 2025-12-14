@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'node:uuid'
+import { v4 as uuidv4 } from 'uuid'
 import multer from 'multer'
 import { settings } from 'src/config'
 

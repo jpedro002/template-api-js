@@ -1,1 +1,1 @@
-export * from 'src/middleware/_upload.middleware'
+export { authenticate, authorize, requireAdmin, requireSuperAdmin } from 'src/middleware/_authorization.middleware'

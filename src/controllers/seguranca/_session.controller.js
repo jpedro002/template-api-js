@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt'
-import { prisma } from 'src/services'
+import { prisma, authorizationService } from 'src/services'
 
 export const sessionController = () => {
 	/**
@@ -22,7 +22,9 @@ export const sessionController = () => {
 					email: true,
 					active: true,
 					id: true,
-					password_hash: true
+					password_hash: true,
+					name: true,
+					login: true
 				}
 			})
 
@@ -43,12 +45,28 @@ export const sessionController = () => {
 				throw new Error('Usuário ou senha inválidos')
 			}
 
+			// Obter permissões e roles
+			const permissions = await authorizationService.getUserPermissions(usuario.id)
+			const roles = await authorizationService.getUserRoles(usuario.id)
+
 			const token = request.server.generateToken({
 				id: usuario.id,
-				fiscalId: usuario.fiscal?.id
+				email: usuario.email,
+				login: usuario.login,
+				name: usuario.name,
+				permissions,
+				roles
 			})
 
 			return reply.send({
+				user: {
+					id: usuario.id,
+					email: usuario.email,
+					login: usuario.login,
+					name: usuario.name,
+					roles,
+					permissions
+				},
 				token
 			})
 		} catch (error) {
@@ -88,10 +106,22 @@ export const sessionController = () => {
 				throw new Error('Usuário não encontrado ou inativo')
 			}
 
-
+			// Buscar roles e permissions do usuário
+			const roles = await authorizationService.getUserRoles(userId)
+			const permissions = await authorizationService.getUserPermissions(userId)
 
 			return reply.send({
-				usuario
+				usuario: {
+					id: usuario.id,
+					email: usuario.email,
+					login: usuario.login,
+					name: usuario.name,
+					roles,
+					permissions,
+					createdAt: usuario.createdAt,
+					updatedAt: usuario.updatedAt,
+					active: usuario.active
+				}
 			})
 		} catch (error) {
 			if (error instanceof Error) {
