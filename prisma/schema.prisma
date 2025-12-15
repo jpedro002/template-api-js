@@ -7,7 +7,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["seguranca"]
+  schemas  = ["seguranca", "public"]
 }
 
 model User {
@@ -108,4 +108,15 @@ model RolePermission {
   @@index([permissionId])
   @@map("role_permissions")
   @@schema("seguranca")
+}
+
+model Card {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("cards")
+  @@schema("public")
 }
