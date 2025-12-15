@@ -39,14 +39,14 @@ function authorize(requiredPermissions, options = {}) {
       request.user.id
     )
 
-    // Verificar se usuário tem as permissões necessárias
-    const matchedPermissions = permissions.filter(perm =>
+    // Verificar se usuário tem as permissões necessárias (levando em conta wildcards)
+    const hasRequiredPermissions = permissions.map(perm =>
       authorizationService.checkPermissionMatch(perm, userPermissions)
     )
 
     const hasAccess = requireAll
-      ? matchedPermissions.length === permissions.length
-      : matchedPermissions.length > 0
+      ? hasRequiredPermissions.every(has => has)
+      : hasRequiredPermissions.some(has => has)
 
     if (!hasAccess) {
       return reply.code(403).send({

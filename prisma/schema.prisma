@@ -11,7 +11,7 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid())
+  id            String   @id @default(uuid(7))
   email         String   @unique
   login         String   @unique @db.VarChar(90)
   password_hash String
@@ -28,7 +28,7 @@ model User {
 }
 
 model Role {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid(7))
   name        String   @unique
   description String?
   active      Boolean  @default(true)
@@ -43,7 +43,7 @@ model Role {
 }
 
 model Permission {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid(7))
   identifier  String   @unique
   name        String
   description String?
@@ -59,7 +59,7 @@ model Permission {
 }
 
 model UserRole {
-  id         String    @id @default(uuid())
+  id         String    @id @default(uuid(7))
   userId     String
   roleId     String
   assignedAt DateTime  @default(now())
@@ -77,7 +77,7 @@ model UserRole {
 }
 
 model UserPermission {
-  id           String    @id @default(uuid())
+  id           String    @id @default(uuid(7))
   userId       String
   permissionId String
   grantedAt    DateTime  @default(now())
@@ -95,7 +95,7 @@ model UserPermission {
 }
 
 model RolePermission {
-  id           String   @id @default(uuid())
+  id           String   @id @default(uuid(7))
   roleId       String
   permissionId String
   grantedAt    DateTime @default(now())
@@ -111,7 +111,7 @@ model RolePermission {
 }
 
 model Card {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid(7))
   title       String
   description String?
   createdAt   DateTime @default(now())

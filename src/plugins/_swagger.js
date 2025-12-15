@@ -75,5 +75,17 @@ export default fp(async fastify => {
 		}
 	})
 
+	// // ✨ NOVO: Rota para expor OpenAPI schema em JSON
+	// // Compatibilidade com ferramentas que usavam /docs/json anteriormente
+	// fastify.get('/docs/json', async (request, reply) => {
+	// 	return fastify.swagger()
+	// })
+
+	// // Alternativa: OpenAPI padrão
+	// fastify.get('/docs/openapi.json', async (request, reply) => {
+	// 	return fastify.swagger()
+	// })
+
 	fastify.log.info('Plugin Scalar registrado com sucesso')
+	fastify.log.info('OpenAPI JSON disponível em: /docs/json ou /docs/openapi.json')
 })

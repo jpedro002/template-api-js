@@ -6,12 +6,18 @@ function usuarioController() {
 	const select = null
 	const SALT_ROUNDS = 10
 
-	const base = baseController('User', { select })
+	const base = baseController('User', {
+		select,
+		omit: {
+			password_hash: true
+		},
+		allowedFields: ['id', 'email', 'login', 'name', 'active', 'createdAt', 'updatedAt'],
+		sensitiveFields: ['password_hash', 'senha', 'password', 'token', 'hash']
+	})
 
 	const post = async (request, reply) => {
 		const { body } = request
 		const { password_hash: pwd, email, ...rest } = body
-
 
 		const hashedPassword = await bcrypt.hash(pwd, SALT_ROUNDS)
 
@@ -21,8 +27,11 @@ function usuarioController() {
 			password_hash: hashedPassword
 		}
 
-		const data = await prisma.usuarios.create({
-			data: { ...usuarioData }
+		const data = await prisma.User.create({
+			data: { ...usuarioData },
+			omit: {
+				password_hash: true
+			}
 		})
 		reply.code(201).send(data)
 	}

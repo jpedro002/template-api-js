@@ -18,7 +18,7 @@ const UsuarioCreateSchema = z.object({
 		.string()
 		.min(1, 'Nome é obrigatório')
 		.max(90, 'Nome deve ter no máximo 90 caracteres'),
-	role: z.enum(['ADMIN'], 'Role é obrigatório'),
+	
 	active: z.boolean().optional().default(true)
 })
 
@@ -37,7 +37,7 @@ const UsuarioUpdateSchema = z.object({
 		.min(1, 'Nome é obrigatório')
 		.max(90, 'Nome deve ter no máximo 90 caracteres')
 		.optional(),
-	role: z.enum(['ADMIN']).optional(),
+	
 	active: z.boolean().optional()
 })
 

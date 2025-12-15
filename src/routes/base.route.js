@@ -71,7 +71,20 @@ function baseRouter(fastify, controller, options = {}) {
 			}),
 		order: z.string().optional(),
 		orderDirection: z.enum(['asc', 'desc']).default('asc').optional(),
-		fspecifics: z.string().optional()
+		fspecifics: z.union([
+			z.string().regex(/^[^$]+\$[^$]+$/, 'Formato esperado: field$value'),
+			z.array(z.string().regex(/^[^$]+\$[^$]+$/, 'Formato esperado: field$value'))
+		]).optional(),
+		select: z
+			.union([z.array(z.string()), z.string(), z.undefined()])
+			.optional()
+			.transform(val => {
+				// Converte array em string (separada por vírgula) para manter compatibilidade
+				if (Array.isArray(val)) {
+					return val.join(',')
+				}
+				return val
+			}),
 	})
 
 	const fetchQueryParamsSchema = queryParamsSchema.extend({
@@ -79,8 +92,23 @@ function baseRouter(fastify, controller, options = {}) {
 		pageSize: z.coerce.number().positive().optional().default(20)
 	})
 
+	const singleResourceQuerySchema = z.object({
+		select: z
+			.union([z.array(z.string()), z.string(), z.undefined()])
+			.optional()
+			.transform(val => {
+				if (Array.isArray(val)) {
+					return val
+				}
+				if (typeof val === 'string') {
+					return [val]
+				}
+				return []
+			}),
+	})
+
 	const idParamsSchema = z.object({
-		id: z.string().transform(val => Number.parseInt(val, 10))
+		id: z.uuid()
 	})
 
 	// Rota POST - Criar novo registro
@@ -92,6 +120,7 @@ function baseRouter(fastify, controller, options = {}) {
 			summary: summary ? `${summary} - Criar` : `Criar novo ${entityName}`,
 			description: `Cria um novo ${entityName}`,
 			...(createSchema && { body: createSchema }),
+			querystring: singleResourceQuerySchema,
 			response: {
 				201: entitySchema || z.any(),
 				400: errorSchema
@@ -111,6 +140,7 @@ function baseRouter(fastify, controller, options = {}) {
 			description: `Atualiza um ${entityName} existente`,
 			params: idParamsSchema,
 			...(updateSchema && { body: updateSchema }),
+			querystring: singleResourceQuerySchema,
 			response: {
 				200: entitySchema || z.any(),
 				400: errorSchema,
@@ -168,6 +198,7 @@ function baseRouter(fastify, controller, options = {}) {
 			summary: summary ? `${summary} - Obter` : `Obter ${entityName} por ID`,
 			description: `Obtém um ${entityName} específico pelo ID`,
 			params: idParamsSchema,
+			querystring: singleResourceQuerySchema,
 			response: {
 				200: entitySchema || z.any(),
 				404: errorSchema
