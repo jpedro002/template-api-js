@@ -1,4 +1,3 @@
-
 import { format } from 'date-fns'
 
 const CONDITIONS_AND_OPERATORS = [
@@ -22,19 +21,17 @@ const CONDITIONS_AND_OPERATORS = [
 	'every',
 	'none',
 	'is',
-	'isNot',
+	'isNot'
 ]
 
 const useUtils = () => {
 	function createRouteGroup(server, prefix, routes) {
-
-		// biome-ignore lint/complexity/noForEach: <explanation>
 		routes.forEach(({ method, path, handler, options }) => {
 			server.route({
 				method,
 				url: `${prefix}${path}`,
 				handler,
-				...(options || {}),
+				...(options || {})
 			})
 		})
 	}
@@ -78,9 +75,9 @@ const useUtils = () => {
 			case 'Int':
 				return array.map(Number)
 			case 'DateTime':
-				return array.map((a) => new Date(a))
+				return array.map(a => new Date(a))
 			case 'Boolean':
-				return array.map((m) => (m === 'true'))
+				return array.map(m => m === 'true')
 		}
 	}
 	function parseObject(type, json, fields) {
@@ -117,13 +114,14 @@ const useUtils = () => {
 		for (const [key, value] of Object.entries(json)) {
 			if (CONDITIONS_AND_OPERATORS.includes(key)) {
 				json[key] = Array.isArray(value)
-					? value.map((j) => parseValues(fields, j, models))
+					? value.map(j => parseValues(fields, j, models))
 					: parseValues(fields, value, models)
 				continue
 			}
-			const field = fields.find((f) => f.name === key)
+			const field = fields.find(f => f.name === key)
 			if (!field) {
-				if (typeof value === 'object') json[key] = parseValues(fields, value, models)
+				if (typeof value === 'object')
+					json[key] = parseValues(fields, value, models)
 				continue
 			}
 			if (field.kind === 'object' && field.relationName) {
@@ -131,7 +129,8 @@ const useUtils = () => {
 				continue
 			}
 			if (field.kind !== 'scalar') continue
-			if (typeof value === 'object') json[key] = parseObject(field.type, value, fields)
+			if (typeof value === 'object')
+				json[key] = parseObject(field.type, value, fields)
 			else if (typeof value === 'string')
 				switch (field.type) {
 					case 'DateTime':
@@ -150,134 +149,245 @@ const useUtils = () => {
 	}
 	function adjustTimezone(obj, fields = null) {
 		if (Array.isArray(obj)) {
-			// biome-ignore lint/complexity/noForEach: <explanation>
-			obj.forEach((item) => adjustTimezone(item, fields))
+			obj.forEach(item => adjustTimezone(item, fields))
 		} else if (obj && typeof obj === 'object') {
-			// biome-ignore lint/complexity/noForEach: <explanation>
-			Object.keys(obj).forEach((key) => {
+			Object.keys(obj).forEach(key => {
 				if (obj[key] instanceof Date) {
 					if (fields) {
-						const field = fields.find((f) => f.name === key)
+						const field = fields.find(f => f.name === key)
 						if (field?.nativeType && field.nativeType[0] === 'Date') return
 					}
 					obj[key] = new Date(obj[key].getTime() - 3 * 60 * 60 * 1000)
-				} else if (obj[key] && (typeof obj[key] === 'object' || Array.isArray(obj[key]))) {
+				} else if (
+					obj[key] &&
+					(typeof obj[key] === 'object' || Array.isArray(obj[key]))
+				) {
 					adjustTimezone(obj[key], fields)
 				}
 			})
 		}
 	}
 	function intervaloDoDiaBrasilia(dataStr) {
-		// Parseia a data como se fosse meia-noite no horário de Brasília (UTC-3)
 		const dataInicio = new Date(`${dataStr}T00:00:00-03:00`)
 		const dataFim = new Date(`${dataStr}T23:59:59-03:00`)
 
 		return {
 			inicioUTC: new Date(dataInicio.getTime() - 3 * 60 * 60 * 1000),
-			fimUTC: new Date(dataFim.getTime() - 3 * 60 * 60 * 1000),
+			fimUTC: new Date(dataFim.getTime() - 3 * 60 * 60 * 1000)
 		}
 	}
 
+	//#region mapping term e fields
+	function mappingFields(field, term, table) {
+		const checkFields = ['Int', 'Boolean', 'Date', 'DateTime', 'Uuid']
+		const isNumericTerm = /^-?\d+$/.test(term)
 
+		// Detecção de UUID (v4 ou v7)
+		const isUuid =
+			typeof term === 'string' &&
+			/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+				term
+			)
 
-	const mappingFields = (field, term, table) => {
-		const checkFields = ['Int', 'Boolean', 'Date', 'DateTime']
-
-		// Helper functions to reduce code duplication
-		const createDateTimeFilter = (term) => {
-			const { inicioUTC, fimUTC } = intervaloDoDiaBrasilia(term)
-			return { gte: inicioUTC, lte: fimUTC }
-		}
-
-		const createInsensitiveSearch = (term) => ({ contains: term, mode: 'insensitive' })
-
-		// Check field type efficiently (memoize field lookup)
-		const getFieldType = (fieldName) => {
-			const fieldInfo = table.fields.find(f => f.name === fieldName)
-			return fieldInfo?.type
-		}
-
-		// Handle fields with dot notation (relation.field)
+		// ---------------------------------------------------------
+		// CASO 1: Dot Notation (ex: usuario.email ou lista:item.campo)
+		// ---------------------------------------------------------
 		if (field.includes('.')) {
 			const [field1, field2] = field.split('.')
 
-			// Handle relational list field with condition (list:check.field)
+			// Tratamento especial para listas aninhadas (ex: metadado:tipo_fiscalizacao.nome)
 			if (field1.includes(':')) {
 				const [fieldList, fieldCheck] = field1.split(':')
-				const fieldType = table.fields[field2]?.type
 
-				if (checkFields.includes(fieldType)) {
-					return {
-						[fieldList]: { some: { [fieldCheck]: { [field2]: fieldType === 'DateTime' ? createDateTimeFilter(term) : term } } }
+				// Se o fieldList é o nome da tabela atual, simplifica
+				if (
+					fieldList === table.name &&
+					table.fields.find(f => f.name === fieldCheck)
+				) {
+					const directField = table.fields.find(f => f.name === fieldCheck)
+
+					if (isUuid) return { [fieldCheck]: term }
+
+					if (checkFields.includes(directField?.type)) {
+						if (directField.type === 'DateTime') {
+							const { inicioUTC, fimUTC } = intervaloDoDiaBrasilia(term)
+							return { [fieldCheck]: { gte: inicioUTC, lte: fimUTC } }
+						}
+						return { [fieldCheck]: isNumericTerm ? Number(term) : term }
 					}
+					return { [fieldCheck]: { contains: term, mode: 'insensitive' } }
 				}
 
+				// Lógica padrão para listas
+				if (checkFields.includes(table.fields[field2]?.type) || isUuid) {
+					if (isUuid) {
+						return {
+							[fieldList]: { some: { [fieldCheck]: { [field2]: term } } }
+						}
+					}
+					if (table.fields[field2]?.type === 'DateTime') {
+						const { inicioUTC, fimUTC } = intervaloDoDiaBrasilia(term)
+						return {
+							[fieldList]: {
+								some: {
+									[fieldCheck]: { [field2]: { gte: inicioUTC, lte: fimUTC } }
+								}
+							}
+						}
+					}
+					return {
+						[fieldList]: {
+							some: {
+								[fieldCheck]: { [field2]: isNumericTerm ? Number(term) : term }
+							}
+						}
+					}
+				}
 				return {
 					[fieldList]: {
-						some: { [fieldCheck]: { [field2]: createInsensitiveSearch(term) } }
+						some: {
+							[fieldCheck]: {
+								[field2]: { contains: term, mode: 'insensitive' }
+							}
+						}
 					}
 				}
 			}
 
-			// Simple relation field
-			return { [field1]: { [field2]: createInsensitiveSearch(term) } }
-		}
+			// Relacionamento padrão (ex: usuario.id)
+			const relationField = table.fields.find(f => f.name === field1)
 
-		// Handle fields with colon notation (list:field)
-		if (field.includes(':')) {
-			const [fieldList, fieldCheck] = field.split(':')
-			let fieldType = table.fields.find((f) => f.name === fieldList)
-
-			// Performance optimization - avoid unnecessary lookups
-			if (fieldType?.isList) {
-				// biome-ignore lint/complexity/useLiteralKeys: <explanation>
-				const processoDadoFields = table.allModels['processoDado'].fields
-				const checkField = processoDadoFields.find(f => f.name === fieldCheck)
-				fieldType = checkField?.type
+			// Prioridade para UUID no relacionamento direto
+			if (isUuid) {
+				return { [field1]: { [field2]: term } }
 			}
 
-			if (checkFields.includes(fieldType)) {
-				return {
-					[fieldList]: { some: { [fieldCheck]: fieldType === 'DateTime' ? createDateTimeFilter(term) : term } }
+			if (relationField?.relationName) {
+				const isIntField = field2.includes('_id') || field2 === 'id'
+				if (isIntField || isNumericTerm) {
+					return { [field1]: { [field2]: isNumericTerm ? Number(term) : term } }
 				}
 			}
 
+			const field2Type = table.fields.find(f => f.name === field2)?.type
+			if (checkFields.includes(field2Type)) {
+				if (field2Type === 'DateTime') {
+					const { inicioUTC, fimUTC } = intervaloDoDiaBrasilia(term)
+					return { [field1]: { [field2]: { gte: inicioUTC, lte: fimUTC } } }
+				}
+				return { [field1]: { [field2]: isNumericTerm ? Number(term) : term } }
+			}
+			return { [field1]: { [field2]: { contains: term, mode: 'insensitive' } } }
+		}
+
+		// ---------------------------------------------------------
+		// CASO 2: Colon Notation (Listas) (ex: tags:nome)
+		// ---------------------------------------------------------
+		else if (field.includes(':')) {
+			const [fieldList, fieldCheck] = field.split(':')
+			const fieldListInfo = table.fields.find(f => f.name === fieldList)
+
+			// Se não é campo da tabela, tenta ver se é campo direto mascarado
+			if (!fieldListInfo) {
+				const directField = table.fields.find(f => f.name === fieldCheck)
+				if (directField) {
+					if (isUuid) return { [fieldCheck]: term }
+
+					if (checkFields.includes(directField.type)) {
+						if (directField.type === 'DateTime') {
+							const { inicioUTC, fimUTC } = intervaloDoDiaBrasilia(term)
+							return { [fieldCheck]: { gte: inicioUTC, lte: fimUTC } }
+						}
+						return { [fieldCheck]: isNumericTerm ? Number(term) : term }
+					}
+					return { [fieldCheck]: { contains: term, mode: 'insensitive' } }
+				}
+			}
+
+			// Verifica se é lista real
+			if (fieldListInfo?.isList) {
+				const checkFieldType = table.allModels?.[
+					fieldListInfo.type
+				]?.fields.find(f => f.name === fieldCheck)?.type
+
+				if (checkFields.includes(checkFieldType) || isUuid) {
+					if (isUuid) {
+						return { [fieldList]: { some: { [fieldCheck]: term } } }
+					}
+					if (checkFieldType === 'DateTime') {
+						const { inicioUTC, fimUTC } = intervaloDoDiaBrasilia(term)
+						return {
+							[fieldList]: {
+								some: { [fieldCheck]: { gte: inicioUTC, lte: fimUTC } }
+							}
+						}
+					}
+					return {
+						[fieldList]: {
+							some: { [fieldCheck]: isNumericTerm ? Number(term) : term }
+						}
+					}
+				}
+				return {
+					[fieldList]: {
+						some: { [fieldCheck]: { contains: term, mode: 'insensitive' } }
+					}
+				}
+			}
+
+			// Fallback para campo simples que usou notação de dois pontos
+			let fieldType = table.fields.find(f => f.name === fieldList)
+			if (fieldType?.isList) {
+				fieldType = table.allModels?.[fieldListInfo?.type]?.fields.find(
+					f => f.name === fieldCheck
+				)?.type
+			}
+			if (checkFields.includes(fieldType) || isUuid) {
+				if (isUuid) {
+					return { [fieldList]: { some: { [fieldCheck]: term } } }
+				}
+				if (fieldType === 'DateTime') {
+					const { inicioUTC, fimUTC } = intervaloDoDiaBrasilia(term)
+					return {
+						[fieldList]: {
+							some: { [fieldCheck]: { gte: inicioUTC, lte: fimUTC } }
+						}
+					}
+				}
+				return {
+					[fieldList]: {
+						some: { [fieldCheck]: isNumericTerm ? Number(term) : term }
+					}
+				}
+			}
 			return {
 				[fieldList]: {
-					some: { [fieldCheck]: createInsensitiveSearch(term) }
+					some: { [fieldCheck]: { contains: term, mode: 'insensitive' } }
 				}
 			}
 		}
 
-		// Handle simple fields
-		const fieldType = getFieldType(field)
+		// ---------------------------------------------------------
+		// CASO 3: Campo Simples (ex: nome, id, status)
+		// ---------------------------------------------------------
+		const fieldType = table.fields.find(f => f.name === field)?.type
+
+		if (isUuid) {
+			return { [field]: term }
+		}
+
 		if (checkFields.includes(fieldType)) {
-			return { [field]: fieldType === 'DateTime' ? createDateTimeFilter(term) : term }
+			if (fieldType === 'DateTime') {
+				const { inicioUTC, fimUTC } = intervaloDoDiaBrasilia(term)
+				return { [field]: { gte: inicioUTC, lte: fimUTC } }
+			}
+			return { [field]: isNumericTerm ? Number(term) : term }
 		}
-
-		return { [field]: createInsensitiveSearch(term) }
+		return { [field]: { contains: term, mode: 'insensitive' } }
 	}
+	//#endregion
 
-	const mapOrder = (order) => {
-		if (!order) return null
-
-		if (Array.isArray(order)) {
-			return order.map(({ field, direction }) => {
-
-				if (!field) return null
-				if (!direction) direction = 'asc'
-
-
-				return ({ [field]: direction })
-			})
-		}
-
-
-
-	}
-
-
-	const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+	const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 	return {
 		createRouteGroup,
@@ -288,10 +398,23 @@ const useUtils = () => {
 		capitalizeFirstLetter,
 		ajustarFusoHorario,
 		adjustTimezone,
-		mapOrder,
-		delay,
+		delay
 	}
 }
 
-export { useUtils }
+const utils = useUtils()
+
+export { useUtils, utils }
+export const {
+	createRouteGroup,
+	validationParse,
+	parseValues,
+	mappingFields,
+	convertMetadado,
+	capitalizeFirstLetter,
+	ajustarFusoHorario,
+	adjustTimezone,
+	delay
+} = utils
+
 export default useUtils
