@@ -52,7 +52,8 @@ function baseRouter(fastify, controller, options = {}) {
 	const paginationSchema = z.object({
 		page: z.number(),
 		rowCount: z.number(),
-		pageCount: z.number()
+		pageCount: z.number(),
+		pageSize: z.number()
 	})
 
 	const queryParamsSchema = z.object({

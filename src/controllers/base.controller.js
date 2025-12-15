@@ -208,7 +208,8 @@ function baseController(model, params = {}) {
 			pagination: {
 				page: Number(page),
 				rowCount,
-				pageCount: Math.ceil(rowCount / pageSize) || 1
+				pageCount: Math.ceil(rowCount / Number(pageSize)) || 1,
+				pageSize: Number(pageSize)
 			}
 		})
 	}

@@ -36,7 +36,7 @@ const errorSchema = z.object({
 
 export const setupPermissionRoutes = async (fastify) => {
   fastify.get(
-    '/permissions',
+    '',
     {
       preHandler: [authenticate],
       schema: {
@@ -53,7 +53,8 @@ export const setupPermissionRoutes = async (fastify) => {
             pagination: z.object({
               page: z.number(),
               rowCount: z.number(),
-              pageCount: z.number()
+              pageCount: z.number(),
+              pageSize: z.number()
             })
           })
         }
@@ -63,7 +64,7 @@ export const setupPermissionRoutes = async (fastify) => {
   )
 
   fastify.post(
-    '/permissions',
+    '',
     {
       preHandler: [authenticate, authorize('permissions:create')],
       schema: {
@@ -81,7 +82,7 @@ export const setupPermissionRoutes = async (fastify) => {
   )
 
   fastify.get(
-    '/permissions/:id',
+    '/:id',
     {
       preHandler: [authenticate],
       schema: {
@@ -101,7 +102,7 @@ export const setupPermissionRoutes = async (fastify) => {
   )
 
   fastify.put(
-    '/permissions/:id',
+    '/:id',
     {
       preHandler: [authenticate, authorize('permissions:update')],
       schema: {
@@ -123,7 +124,7 @@ export const setupPermissionRoutes = async (fastify) => {
   )
 
   fastify.delete(
-    '/permissions/:id',
+    '/:id',
     {
       preHandler: [authenticate, authorize('permissions:delete')],
       schema: {
@@ -143,7 +144,7 @@ export const setupPermissionRoutes = async (fastify) => {
   )
 
   fastify.get(
-    '/permissions/category/:category',
+    '/category/:category',
     {
       preHandler: [authenticate],
       schema: {
