@@ -62,6 +62,7 @@ function baseRouter(fastify, controller, options = {}) {
 			.union([z.array(z.string()), z.string(), z.undefined()])
 			.optional()
 			.transform(val => {
+
 				if (Array.isArray(val)) {
 					return val
 				}

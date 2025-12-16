@@ -1,5 +1,6 @@
 import { authorize, authenticate } from 'src/middleware'
 import { permissionController } from 'src/controllers/seguranca'
+import { baseRouter } from 'src/routes/base.route'
 import { z } from 'zod'
 
 const controller = permissionController()
@@ -28,121 +29,24 @@ const PermissionUpdateSchema = z.object({
   active: z.boolean().optional().describe('Status ativo')
 })
 
-const errorSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-  statusCode: z.number().optional()
-})
-
 export const setupPermissionRoutes = async (fastify) => {
-  fastify.get(
-    '',
-    {
-      preHandler: [authenticate],
-      schema: {
-        tags: ['Permissões'],
-        summary: 'Listar permissões',
-        description: 'Retorna lista paginada de permissões',
-        querystring: z.object({
-          page: z.coerce.number().optional().default(1),
-          pageSize: z.coerce.number().optional().default(20)
-        }),
-        response: {
-          200: z.object({
-            data: z.array(PermissionSchema),
-            pagination: z.object({
-              page: z.number(),
-              rowCount: z.number(),
-              pageCount: z.number(),
-              pageSize: z.number()
-            })
-          })
-        }
-      }
+  // Registrar rotas CRUD padrão usando baseRouter
+  baseRouter(fastify, controller, {
+    tag: 'Permissões',
+    summary: 'Permissão',
+    schemas: {
+      createSchema: PermissionCreateSchema,
+      updateSchema: PermissionUpdateSchema,
+      entitySchema: PermissionSchema
     },
-    controller.fetch
-  )
+    middleware: [authenticate],
+    postMiddleware: [authenticate, authorize('permissions:create')],
+    putMiddleware: [authenticate, authorize('permissions:update')],
+    deleteMiddleware: [authenticate, authorize('permissions:delete')],
+    entityName: 'permissão'
+  })
 
-  fastify.post(
-    '',
-    {
-      preHandler: [authenticate, authorize('permissions:create')],
-      schema: {
-        tags: ['Permissões'],
-        summary: 'Criar permissão',
-        description: 'Cria uma nova permissão no sistema',
-        body: PermissionCreateSchema,
-        response: {
-          201: PermissionSchema,
-          400: errorSchema
-        }
-      }
-    },
-    controller.post
-  )
-
-  fastify.get(
-    '/:id',
-    {
-      preHandler: [authenticate],
-      schema: {
-        tags: ['Permissões'],
-        summary: 'Obter permissão por ID',
-        description: 'Retorna os detalhes de uma permissão específica',
-        params: z.object({
-          id: z.string().uuid().describe('ID da permissão')
-        }),
-        response: {
-          200: PermissionSchema,
-          404: errorSchema
-        }
-      }
-    },
-    controller.one
-  )
-
-  fastify.put(
-    '/:id',
-    {
-      preHandler: [authenticate, authorize('permissions:update')],
-      schema: {
-        tags: ['Permissões'],
-        summary: 'Atualizar permissão',
-        description: 'Atualiza uma permissão existente',
-        params: z.object({
-          id: z.string().uuid().describe('ID da permissão')
-        }),
-        body: PermissionUpdateSchema,
-        response: {
-          200: PermissionSchema,
-          400: errorSchema,
-          404: errorSchema
-        }
-      }
-    },
-    controller.put
-  )
-
-  fastify.delete(
-    '/:id',
-    {
-      preHandler: [authenticate, authorize('permissions:delete')],
-      schema: {
-        tags: ['Permissões'],
-        summary: 'Deletar permissão',
-        description: 'Remove uma permissão do sistema',
-        params: z.object({
-          id: z.string().uuid().describe('ID da permissão')
-        }),
-        response: {
-          204: z.null(),
-          404: errorSchema
-        }
-      }
-    },
-    controller.del
-  )
-
+  // Rota customizada - Listar por categoria
   fastify.get(
     '/category/:category',
     {

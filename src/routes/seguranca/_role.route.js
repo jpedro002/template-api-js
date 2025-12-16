@@ -1,5 +1,6 @@
 import { authorize, authenticate } from 'src/middleware'
 import { roleController } from 'src/controllers/seguranca'
+import { baseRouter } from 'src/routes/base.route'
 import { z } from 'zod'
 
 const controller = roleController()
@@ -41,122 +42,26 @@ const UserSchema = z.object({
   active: z.boolean()
 })
 
-const errorSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-  statusCode: z.number().optional()
-})
-
 export const setupRoleRoutes = async (fastify) => {
+  // Registrar rotas CRUD padrão usando baseRouter
+  baseRouter(fastify, controller, {
+    tag: 'Roles',
+    summary: 'Role',
+    schemas: {
+      createSchema: RoleCreateSchema,
+      updateSchema: RoleUpdateSchema,
+      entitySchema: RoleSchema
+    },
+    middleware: [authenticate],
+    postMiddleware: [authenticate, authorize('roles:create')],
+    putMiddleware: [authenticate, authorize('roles:update')],
+    deleteMiddleware: [authenticate, authorize('roles:delete')],
+    entityName: 'role'
+  })
+
+  // Rota customizada - Listar usuários de uma role
   fastify.get(
-    '/roles',
-    {
-      preHandler: [authenticate],
-      schema: {
-        tags: ['Roles'],
-        summary: 'Listar roles',
-        description: 'Retorna lista paginada de roles com suas permissões',
-        querystring: z.object({
-          page: z.coerce.number().optional().default(1),
-          pageSize: z.coerce.number().optional().default(20)
-        }),
-        response: {
-          200: z.object({
-            data: z.array(RoleSchema),
-            pagination: z.object({
-              page: z.number(),
-              rowCount: z.number(),
-              pageCount: z.number()
-            })
-          })
-        }
-      }
-    },
-    controller.fetch
-  )
-
-  fastify.post(
-    '/roles',
-    {
-      preHandler: [authenticate, authorize('roles:create')],
-      schema: {
-        tags: ['Roles'],
-        summary: 'Criar role',
-        description: 'Cria uma nova role e associa permissões',
-        body: RoleCreateSchema,
-        response: {
-          201: RoleSchema,
-          400: errorSchema
-        }
-      }
-    },
-    controller.post
-  )
-
-  fastify.get(
-    '/roles/:id',
-    {
-      preHandler: [authenticate],
-      schema: {
-        tags: ['Roles'],
-        summary: 'Obter role por ID',
-        description: 'Retorna os detalhes de uma role específica com suas permissões',
-        params: z.object({
-          id: z.string().uuid().describe('ID da role')
-        }),
-        response: {
-          200: RoleSchema,
-          404: errorSchema
-        }
-      }
-    },
-    controller.one
-  )
-
-  fastify.put(
-    '/roles/:id',
-    {
-      preHandler: [authenticate, authorize('roles:update')],
-      schema: {
-        tags: ['Roles'],
-        summary: 'Atualizar role',
-        description: 'Atualiza uma role existente e suas permissões associadas',
-        params: z.object({
-          id: z.string().uuid().describe('ID da role')
-        }),
-        body: RoleUpdateSchema,
-        response: {
-          200: RoleSchema,
-          400: errorSchema,
-          404: errorSchema
-        }
-      }
-    },
-    controller.put
-  )
-
-  fastify.delete(
-    '/roles/:id',
-    {
-      preHandler: [authenticate, authorize('roles:delete')],
-      schema: {
-        tags: ['Roles'],
-        summary: 'Deletar role',
-        description: 'Remove uma role do sistema',
-        params: z.object({
-          id: z.string().uuid().describe('ID da role')
-        }),
-        response: {
-          204: z.null(),
-          404: errorSchema
-        }
-      }
-    },
-    controller.del
-  )
-
-  fastify.get(
-    '/roles/:id/users',
+    '/:id/users',
     {
       preHandler: [authenticate, authorize('roles:read')],
       schema: {
@@ -168,7 +73,11 @@ export const setupRoleRoutes = async (fastify) => {
         }),
         response: {
           200: z.array(UserSchema),
-          404: errorSchema
+          404: z.object({
+            error: z.string(),
+            message: z.string(),
+            statusCode: z.number().optional()
+          })
         }
       }
     },

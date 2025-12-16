@@ -24,7 +24,7 @@ export async function createApp() {
 	await server.register(corsPlugin)
 	await server.register(swaggerPlugin)
 	await server.register(jwtPlugin)
-	await server.register(fastifyQs)
+	await server.register(fastifyQs, { parseArrays: true })
 
 	const HomeSchema = {
 		tags: ['API Info'],
@@ -44,14 +44,14 @@ export async function createApp() {
 	// Registrar rotas de segurança
 	server.register(segurancaRoutes, { prefix: '/api/seguranca' })
 
-	if (settings.NODE_ENV === 'development') {
-		server.addHook('onRequest', async (request) => {
-			// Atraso aleatório entre 1s e 5s para simular latência em dev
-			const ms = Math.floor(Math.random() * 4000) + 1000
-			request.log.info({ delayMs: ms }, 'Aplicando atraso de desenvolvimento')
-			await delay(ms)
-		})
-	}
+	// if (settings.NODE_ENV === 'development') {
+	// 	server.addHook('onRequest', async (request) => {
+	// 		// Atraso aleatório entre 1s e 5s para simular latência em dev
+	// 		const ms = Math.floor(Math.random() * 4000) + 1000
+	// 		request.log.info({ delayMs: ms }, 'Aplicando atraso de desenvolvimento')
+	// 		await delay(ms)
+	// 	})
+	// }
 
 	// Registrar o errorHandler nativo do Fastify
 	server.setErrorHandler(errorHandler)
