@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { errorHandler, useUtils } from './helpers'
 import { jwtPlugin } from './plugins'
 import { segurancaRoutes } from './routes'
+import { settings } from './config'
 
 export async function createApp() {
 	// biome-ignore lint/correctness/noUnusedVariables: <>
@@ -43,11 +44,14 @@ export async function createApp() {
 	// Registrar rotas de segurança
 	server.register(segurancaRoutes, { prefix: '/api/seguranca' })
 
-	// if (settings.NODE_ENV === 'development') {
-	// 	server.addHook('onRequest', async () => {
-	// 		await delay(3000)
-	// 	})
-	// }
+	if (settings.NODE_ENV === 'development') {
+		server.addHook('onRequest', async (request) => {
+			// Atraso aleatório entre 1s e 5s para simular latência em dev
+			const ms = Math.floor(Math.random() * 4000) + 1000
+			request.log.info({ delayMs: ms }, 'Aplicando atraso de desenvolvimento')
+			await delay(ms)
+		})
+	}
 
 	// Registrar o errorHandler nativo do Fastify
 	server.setErrorHandler(errorHandler)

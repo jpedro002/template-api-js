@@ -6,18 +6,33 @@ import { Prisma } from '@prisma/client'
 function getValidationErrors(error) {
     // Erros do fastify-type-provider-zod ou nativos
     if (error.validation) {
-        return error.validation.map(err => ({
-            field: err.instancePath ? err.instancePath.replace('/', '') : (err.path || 'campo'),
-            message: err.message,
-            keyword: err.keyword
-        }))
+        return error.validation.map(err => {
+            let field = 'body'
+            
+            // Extrai o campo do instancePath
+            if (err.instancePath && err.instancePath !== '/') {
+                field = err.instancePath.replace(/\//g, '.')
+            } else if (err.path) {
+                field = Array.isArray(err.path) ? err.path.join('.') : err.path
+            }
+
+            return {
+                field,
+                message: err.message,
+                keyword: err.keyword,
+                received: err.params?.type || err.params?.received || 'desconhecido',
+                expected: err.params?.expected || 'informação ausente'
+            }
+        })
     }
     // Fallback se vier direto do ZodError (fora do contexto do fastify)
     if (error.issues) {
         return error.issues.map(issue => ({
-            field: issue.path.join('.'),
+            field: issue.path?.join('.') || 'campo',
             message: issue.message,
-            keyword: issue.code
+            keyword: issue.code,
+            received: issue.type || 'desconhecido',
+            expected: issue.message
         }))
     }
     return []
@@ -35,12 +50,13 @@ export function errorHandler(error, request, reply) {
     if (error.code === 'FST_ERR_VALIDATION' || error.validation) {
         statusCode = 400
         errorType = 'Erro de Validação'
-        message = 'Os dados enviados são inválidos.'
+        message = 'Os dados enviados contêm erros de validação.'
         const validationErrors = getValidationErrors(error)
         
         details = {
             totalErrors: validationErrors.length,
-            errors: validationErrors
+            errors: validationErrors,
+            hint: 'Verifique os campos listados acima. Certifique-se de enviar um objeto JSON válido no corpo da requisição.'
         }
     }
 
