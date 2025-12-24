@@ -4,7 +4,6 @@ import { baseController } from 'src/controllers'
 const select = {
   id: true,
   name: true,
-  description: true,
   active: true,
   rolePermissions: {
     select: {
@@ -21,7 +20,7 @@ const base = baseController('Role', { select })
  * POST - Criar nova role com permissões
  */
 const post = async (request, reply) => {
-  const { name, description, permissionIds } = request.body
+  const { name, permissionIds } = request.body
 
   if (!name) {
     return reply.code(400).send({
@@ -29,7 +28,7 @@ const post = async (request, reply) => {
     })
   }
 
-  const role = await authorizationService.createRole(name, description, permissionIds || [])
+  const role = await authorizationService.createRole(name, null, permissionIds || [])
 
   reply.code(201).send(role)
 }
@@ -39,14 +38,14 @@ const post = async (request, reply) => {
  */
 const put = async (request, reply) => {
   const { id } = request.params
-  const { name, description, permissionIds } = request.body
+  const { name, active, permissionIds } = request.body
 
   // Atualizar role básico
   const role = await prisma.role.update({
     where: { id },
     data: {
-      name: name || undefined,
-      description: description || undefined
+      name: name !== undefined ? name : undefined,
+      active: active !== undefined ? active : undefined
     },
     select
   })

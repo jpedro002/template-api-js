@@ -20,12 +20,16 @@ function isCacheExpired(timestamp) {
 
 /**
  * Obtém todas as permissões de um usuário (com cache)
+ * @param {number} userId - ID do usuário
+ * @param {boolean} forceRefresh - Se true, ignora o cache e busca direto do banco
  */
-async function getUserPermissions(userId) {
-  // Verificar cache
-  const cached = permissionCache.get(userId)
-  if (cached && !isCacheExpired(cached.timestamp)) {
-    return cached.permissions
+async function getUserPermissions(userId, forceRefresh = false) {
+  // Verificar cache (se não forçar refresh)
+  if (!forceRefresh) {
+    const cached = permissionCache.get(userId)
+    if (cached && !isCacheExpired(cached.timestamp)) {
+      return cached.permissions
+    }
   }
 
   // Buscar do banco
@@ -208,7 +212,6 @@ async function createRole(name, description, permissionIds = []) {
   const role = await prisma.role.create({
     data: {
       name,
-      description,
       rolePermissions: {
         createMany: {
           data: permissionIds.map(permissionId => ({ permissionId }))

@@ -16,20 +16,17 @@ const RolePermissionSchema = z.object({
 const RoleSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
-  description: z.string().nullable(),
   active: z.boolean(),
   rolePermissions: z.array(RolePermissionSchema)
 })
 
 const RoleCreateSchema = z.object({
   name: z.string().describe('Nome da role'),
-  description: z.string().optional().describe('Descrição da role'),
   permissionIds: z.array(z.string().uuid()).optional().describe('IDs das permissões a associar')
 })
 
 const RoleUpdateSchema = z.object({
   name: z.string().optional().describe('Nome da role'),
-  description: z.string().optional().describe('Descrição da role'),
   permissionIds: z.array(z.string().uuid()).optional().describe('IDs das permissões a associar'),
   active: z.boolean().optional().describe('Status ativo')
 })
@@ -52,7 +49,7 @@ export const setupRoleRoutes = async (fastify) => {
       updateSchema: RoleUpdateSchema,
       entitySchema: RoleSchema
     },
-    middleware: [authenticate],
+    middleware: [authenticate, authorize('roles:read') ],
     postMiddleware: [authenticate, authorize('roles:create')],
     putMiddleware: [authenticate, authorize('roles:update')],
     deleteMiddleware: [authenticate, authorize('roles:delete')],

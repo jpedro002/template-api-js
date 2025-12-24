@@ -46,7 +46,7 @@ const UsuarioUpdateSchema = z.object({
 export function usuarioRoutes(fastify) {
 	const controller = usuarioController()
 
-	const listMiddleware = [authenticate]
+	const listMiddleware = [authenticate, authorize('users:read')]
 	const createMiddleware = [authenticate, authorize('users:create')]
 	const updateMiddleware = [authenticate, authorize('users:update')]
 	const deleteMiddleware = [authenticate, authorize('users:delete')]
@@ -91,5 +91,97 @@ export function usuarioRoutes(fastify) {
 			}
 		},
 		handler: controller.updatePassword
+	})
+
+	// Rota para atribuir role a usuário
+	fastify.route({
+		method: 'POST',
+		url: '/:userId/roles/:roleId',
+		preHandler: updateMiddleware,
+		schema: {
+			tags: ['segurança - Usuários'],
+			summary: 'Atribuir role a usuário',
+			description: 'Atribui uma role (perfil) a um usuário',
+			params: z.object({
+				userId: z.string(),
+				roleId: z.string()
+			}),
+			body: z.object({
+				assignedBy: z.string().optional(),
+				expiresAt: z.string().datetime().optional()
+			}).optional(),
+			response: {
+				200: z.any(),
+				404: z.object({ error: z.string() })
+			}
+		},
+		handler: controller.assignRole
+	})
+
+	// Rota para remover role de usuário
+	fastify.route({
+		method: 'DELETE',
+		url: '/:userId/roles/:roleId',
+		preHandler: updateMiddleware,
+		schema: {
+			tags: ['segurança - Usuários'],
+			summary: 'Remover role de usuário',
+			description: 'Remove uma role (perfil) de um usuário',
+			params: z.object({
+				userId: z.string(),
+				roleId: z.string()
+			}),
+			response: {
+				200: z.object({ success: z.boolean() }),
+				404: z.object({ error: z.string() })
+			}
+		},
+		handler: controller.removeRole
+	})
+
+	// Rota para atribuir permissão a usuário
+	fastify.route({
+		method: 'POST',
+		url: '/:userId/permissions/:permissionId',
+		preHandler: updateMiddleware,
+		schema: {
+			tags: ['segurança - Usuários'],
+			summary: 'Atribuir permissão a usuário',
+			description: 'Atribui uma permissão específica a um usuário',
+			params: z.object({
+				userId: z.string(),
+				permissionId: z.string()
+			}),
+			body: z.object({
+				grantedBy: z.string().optional(),
+				expiresAt: z.string().datetime().optional()
+			}).optional(),
+			response: {
+				200: z.any(),
+				404: z.object({ error: z.string() })
+			}
+		},
+		handler: controller.grantPermission
+	})
+
+	// Rota para remover permissão de usuário
+	fastify.route({
+		method: 'DELETE',
+		url: '/:userId/permissions/:permissionId',
+		preHandler: updateMiddleware,
+		schema: {
+			tags: ['segurança - Usuários'],
+			summary: 'Remover permissão de usuário',
+			description: 'Remove uma permissão específica de um usuário',
+			params: z.object({
+				userId: z.string(),
+				permissionId: z.string()
+			}),
+			response: {
+				200: z.object({ success: z.boolean() }),
+				404: z.object({ error: z.string() })
+			}
+		},
+		handler: controller.revokePermission
 	})
 }

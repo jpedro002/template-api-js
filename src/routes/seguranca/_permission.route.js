@@ -39,7 +39,7 @@ export const setupPermissionRoutes = async (fastify) => {
       updateSchema: PermissionUpdateSchema,
       entitySchema: PermissionSchema
     },
-    middleware: [authenticate],
+    middleware: [authenticate, authorize('permissions:read') ],
     postMiddleware: [authenticate, authorize('permissions:create')],
     putMiddleware: [authenticate, authorize('permissions:update')],
     deleteMiddleware: [authenticate, authorize('permissions:delete')],

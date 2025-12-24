@@ -106,9 +106,8 @@ export const sessionController = () => {
 				throw new Error('Usuário não encontrado ou inativo')
 			}
 
-			// Buscar roles e permissions do usuário
-			const roles = await authorizationService.getUserRoles(userId)
-			const permissions = await authorizationService.getUserPermissions(userId)
+		const roles = await authorizationService.getUserRoles(userId)
+		const permissions = await authorizationService.getUserPermissions(userId, true)
 
 			return reply.send({
 				usuario: {
