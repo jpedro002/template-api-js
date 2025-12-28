@@ -1,7 +1,12 @@
 // Permissões para {{modelName}} - {{resourceName}}
 // Padrão: resource:action
+// Execute este arquivo diretamente: node prisma/permissions_{{modelLower}}.js
 
-export const {{modelUpper}}_PERMISSIONS = [
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
+const {{modelUpper}}_PERMISSIONS = [
 	{
 		identifier: '{{modelPlural}}:create',
 		name: 'Criar {{resourceName}}',
@@ -23,3 +28,35 @@ export const {{modelUpper}}_PERMISSIONS = [
 		category: '{{modelPlural}}'
 	}
 ]
+
+async function seedPermissions() {
+	try {
+		console.log(`🔐 Criando/Atualizando permissões de {{resourceName}}...`)
+		
+		for (const permission of {{modelUpper}}_PERMISSIONS) {
+			await prisma.permission.upsert({
+				where: { identifier: permission.identifier },
+				update: {
+					name: permission.name,
+					category: permission.category
+				},
+				create: {
+					identifier: permission.identifier,
+					name: permission.name,
+					category: permission.category
+				}
+			})
+		}
+		
+		console.log(`✅ Permissões de {{resourceName}} criadas/atualizadas com sucesso!`)
+	} catch (error) {
+		console.error(`❌ Erro ao criar/atualizar permissões:`, error)
+		process.exit(1)
+	} finally {
+		await prisma.$disconnect()
+	}
+}
+
+seedPermissions()
+
+export const {{modelUpper}}_PERMISSIONS_EXPORT = {{modelUpper}}_PERMISSIONS

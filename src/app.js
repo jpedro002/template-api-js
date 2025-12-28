@@ -9,7 +9,7 @@ import swaggerPlugin from 'src/plugins/_swagger'
 import { z } from 'zod'
 import { errorHandler, useUtils } from './helpers'
 import { jwtPlugin } from './plugins'
-import { segurancaRoutes } from './routes'
+import { segurancaRoutes,testeRoutes } from './routes'
 import { settings } from './config'
 
 export async function createApp() {
@@ -41,8 +41,8 @@ export async function createApp() {
 		return { msg: 'API TEMPLATE' }
 	})
 
-	// Registrar rotas de segurança
 	server.register(segurancaRoutes, { prefix: '/api/seguranca' })
+	server.register(testeRoutes, { prefix: '/api/teste' })
 
 	// if (settings.NODE_ENV === 'development') {
 	// 	server.addHook('onRequest', async (request) => {

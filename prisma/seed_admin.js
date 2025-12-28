@@ -1,10 +1,14 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcrypt'
+import { CARD_PERMISSIONS_EXPORT as CARD_PERMISSIONS } from './permissions_card.js'
+
 
 const db = new PrismaClient()
 
 // Definir permissões por categoria
 const PERMISSIONS = [
+
+	...CARD_PERMISSIONS,
 	{ identifier: '*', name: 'Todas as Permissões', category: 'root' },
 
 	// Gerenciamento de Usuários
@@ -12,8 +16,6 @@ const PERMISSIONS = [
 	{ identifier: 'users:read', name: 'Visualizar Usuários', category: 'users' },
 	{ identifier: 'users:update', name: 'Atualizar Usuários', category: 'users' },
 	{ identifier: 'users:delete', name: 'Deletar Usuários', category: 'users' },
-	{ identifier: 'users:list', name: 'Listar Usuários', category: 'users' },
-	{ identifier: 'users:export', name: 'Exportar Usuários', category: 'users' },
 
 	// Gerenciamento de Roles
 	{ identifier: 'roles:create', name: 'Criar Roles', category: 'roles' },
@@ -43,17 +45,7 @@ const PERMISSIONS = [
 		category: 'permissions'
 	},
 
-	// Administração
-	{
-		identifier: 'admin:manage-users',
-		name: 'Gerenciar Usuários do Sistema',
-		category: 'admin'
-	},
-	{
-		identifier: 'admin:manage-roles',
-		name: 'Gerenciar Roles do Sistema',
-		category: 'admin'
-	}
+
 ]
 
 // Definir roles com suas permissões
@@ -62,35 +54,6 @@ const ROLES_CONFIG = [
 		name: 'SUPER_ADMIN',
 		description: 'Super administrador com acesso total',
 		permissionIdentifiers: ['*'] // Wildcard para todas as permissões
-	},
-	{
-		name: 'ADMIN',
-		description: 'Administrador com acesso a usuários, roles e permissões',
-		permissionIdentifiers: [
-			'users:create',
-			'users:read',
-			'users:update',
-			'users:delete',
-			'users:list',
-			'users:export',
-			'roles:create',
-			'roles:read',
-			'roles:update',
-			'roles:delete',
-			'permissions:read',
-			'admin:manage-users',
-			'admin:manage-roles'
-		]
-	},
-	{
-		name: 'MANAGER',
-		description: 'Gerente com acesso de leitura e atualização de usuários',
-		permissionIdentifiers: ['users:read', 'users:update', 'users:list']
-	},
-	{
-		name: 'USER',
-		description: 'Usuário padrão com acesso limitado',
-		permissionIdentifiers: ['users:read']
 	}
 ]
 
@@ -133,13 +96,15 @@ async function seedRoles() {
 		})
 
 		if (roleConfig.permissionIdentifiers.includes('*')) {
-			// Se for wildcard, associar todas as permissões
-			const allPermissions = await db.permission.findMany()
-			for (const perm of allPermissions) {
+			// Se for wildcard, associar só o *
+			const wildcardPerm = await db.permission.findUnique({
+				where: { identifier: '*' }
+			})
+			if (wildcardPerm) {
 				await db.rolePermission.create({
 					data: {
 						roleId: role.id,
-						permissionId: perm.id
+						permissionId: wildcardPerm.id
 					}
 				})
 			}

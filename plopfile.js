@@ -83,8 +83,19 @@ export default function (plop) {
 			const modelCamel = plop.getHelper('camelCase')(data.modelName)
 			const modelPlural = plop.getHelper('pluralize')(data.modelName)
 			const modelUpper = data.modelName.toUpperCase()
-			// Para nomes de função, remover barras do moduleName
+			
+			// Processar moduleName para remover barras e criar nome de função válido
+			// Se moduleName for "teste/cards", transforma em "testeCards"
 			const moduleCamel = plop.getHelper('camelCase')(data.moduleName.replace(/\//g, ' '))
+			
+			// Extrair o último segmento do caminho para o nome do arquivo
+			// Se moduleName for "teste/cards", o arquivo será "cards.controller.js"
+			// Se moduleName for apenas "teste", o arquivo será "teste.controller.js"
+			const moduleSegments = data.moduleName.split('/').filter(s => s)
+			const fileName = moduleSegments[moduleSegments.length - 1]
+			const folderPath = moduleSegments.length > 1 
+				? moduleSegments.slice(0, -1).join('/') 
+				: data.moduleName
 
 			// Adicionar ao contexto dos templates
 			const contextData = {
@@ -101,7 +112,7 @@ export default function (plop) {
 			// 1. Criar index.js do controller se não existir
 			actions.push({
 				type: 'add',
-				path: `src/controllers/${data.moduleName}/index.js`,
+				path: `src/controllers/${folderPath}/index.js`,
 				template: `// Controllers do módulo {{moduleName}}\n`,
 				skipIfExists: true
 			})
@@ -109,7 +120,7 @@ export default function (plop) {
 			// 2. Criar Controller no módulo
 			actions.push({
 				type: 'add',
-				path: `src/controllers/${data.moduleName}/${modelLower}.controller.js`,
+				path: `src/controllers/${folderPath}/${fileName}.controller.js`,
 				templateFile: 'plop-templates/controller.hbs',
 				data: contextData,
 				skipIfExists: true
@@ -118,7 +129,7 @@ export default function (plop) {
 			// 3. Criar index.js da route se não existir
 			actions.push({
 				type: 'add',
-				path: `src/routes/${data.moduleName}/index.js`,
+				path: `src/routes/${folderPath}/index.js`,
 				template: `// Routes do módulo {{moduleName}}\n`,
 				skipIfExists: true
 			})
@@ -126,7 +137,7 @@ export default function (plop) {
 			// 4. Criar Route no módulo (direto, sem pasta extra)
 			actions.push({
 				type: 'add',
-				path: `src/routes/${data.moduleName}/${modelLower}.route.js`,
+				path: `src/routes/${folderPath}/${fileName}.route.js`,
 				templateFile: 'plop-templates/route.hbs',
 				data: contextData,
 				skipIfExists: true
@@ -136,16 +147,16 @@ export default function (plop) {
 			// 6. Atualizar index.js do controller
 			actions.push({
 				type: 'append',
-				path: `src/controllers/${data.moduleName}/index.js`,
-				template: `export { ${modelCamel}Controller } from './${modelLower}.controller.js'\n`,
+				path: `src/controllers/${folderPath}/index.js`,
+				template: `export { ${modelCamel}Controller } from './${fileName}.controller.js'\n`,
 				skipIfExists: false
 			})
 
 			// 7. Atualizar index.js da route - adicionar import
 			actions.push({
 				type: 'append',
-				path: `src/routes/${data.moduleName}/index.js`,
-				template: `import { ${modelCamel}Routes } from './${modelLower}.route.js'\n`,
+				path: `src/routes/${folderPath}/index.js`,
+				template: `import { ${modelCamel}Routes } from './${fileName}.route.js'\n`,
 				pattern: /^import/,
 				skipIfExists: false
 			})
@@ -153,7 +164,7 @@ export default function (plop) {
 			// 7b. Atualizar index.js da route - adicionar função export
 			actions.push({
 				type: 'append',
-				path: `src/routes/${data.moduleName}/index.js`,
+				path: `src/routes/${folderPath}/index.js`,
 				template: `\nexport function ${moduleCamel}Routes(fastify) {\n\tfastify.register(${modelCamel}Routes, { prefix: '/${modelPlural}' })\n}\n`,
 				skipIfExists: false
 			})
@@ -171,7 +182,7 @@ export default function (plop) {
 				actions.push({
 					type: 'append',
 					path: 'prisma/seed_admin.js',
-					template: `import { ${modelUpper}_PERMISSIONS } from './permissions_${modelLower}.js'\n`,
+					template: `import { ${modelUpper}_PERMISSIONS_EXPORT as ${modelUpper}_PERMISSIONS } from './permissions_${modelLower}.js'\n`,
 					pattern: /^import bcrypt from 'bcrypt'/m,
 					skipIfExists: false
 				})
