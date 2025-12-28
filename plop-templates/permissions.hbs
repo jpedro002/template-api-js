@@ -1,6 +1,5 @@
 // Permissões para {{modelName}} - {{resourceName}}
 // Padrão: resource:action
-// Copie o conteúdo para prisma/seed_admin.js
 
 export const {{modelUpper}}_PERMISSIONS = [
 	{
@@ -22,22 +21,5 @@ export const {{modelUpper}}_PERMISSIONS = [
 		identifier: '{{modelPlural}}:delete',
 		name: 'Deletar {{resourceName}}',
 		category: '{{modelPlural}}'
-	},
-	{
-		identifier: '{{modelPlural}}:list',
-		name: 'Listar {{resourceName}}',
-		category: '{{modelPlural}}'
-	},
-	{
-		identifier: '{{modelPlural}}:export',
-		name: 'Exportar {{resourceName}}',
-		category: '{{modelPlural}}'
 	}
-	// TODO: Adicione permissões customizadas se necessário
-	// Exemplo:
-	// {
-	//   identifier: '{{modelPlural}}:approve',
-	//   name: 'Aprovar {{resourceName}}',
-	//   category: '{{modelPlural}}'
-	// },
 ]

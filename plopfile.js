@@ -83,6 +83,8 @@ export default function (plop) {
 			const modelCamel = plop.getHelper('camelCase')(data.modelName)
 			const modelPlural = plop.getHelper('pluralize')(data.modelName)
 			const modelUpper = data.modelName.toUpperCase()
+			// Para nomes de função, remover barras do moduleName
+			const moduleCamel = plop.getHelper('camelCase')(data.moduleName.replace(/\//g, ' '))
 
 			// Adicionar ao contexto dos templates
 			const contextData = {
@@ -90,7 +92,8 @@ export default function (plop) {
 				modelLower,
 				modelCamel,
 				modelPlural,
-				modelUpper
+				modelUpper,
+				moduleCamel
 			}
 
 			const actions = []
@@ -116,11 +119,11 @@ export default function (plop) {
 			actions.push({
 				type: 'add',
 				path: `src/routes/${data.moduleName}/index.js`,
-				template: `// Routes do módulo {{moduleName}}\n\nexport function {{camelCase moduleName}}Routes(fastify) {\n}\n`,
+				template: `// Routes do módulo {{moduleName}}\n`,
 				skipIfExists: true
 			})
 
-			// 4. Criar Route no módulo
+			// 4. Criar Route no módulo (direto, sem pasta extra)
 			actions.push({
 				type: 'add',
 				path: `src/routes/${data.moduleName}/${modelLower}.route.js`,
@@ -129,15 +132,7 @@ export default function (plop) {
 				skipIfExists: true
 			})
 
-			// 5. Criar Schema
-			actions.push({
-				type: 'add',
-				path: `src/schemas/${modelLower}.schema.js`,
-				templateFile: 'plop-templates/schema.hbs',
-				data: contextData,
-				skipIfExists: true
-			})
-
+			
 			// 6. Atualizar index.js do controller
 			actions.push({
 				type: 'append',
@@ -146,12 +141,20 @@ export default function (plop) {
 				skipIfExists: false
 			})
 
-			// 7. Atualizar index.js da route
+			// 7. Atualizar index.js da route - adicionar import
 			actions.push({
 				type: 'append',
 				path: `src/routes/${data.moduleName}/index.js`,
 				template: `import { ${modelCamel}Routes } from './${modelLower}.route.js'\n`,
 				pattern: /^import/,
+				skipIfExists: false
+			})
+
+			// 7b. Atualizar index.js da route - adicionar função export
+			actions.push({
+				type: 'append',
+				path: `src/routes/${data.moduleName}/index.js`,
+				template: `\nexport function ${moduleCamel}Routes(fastify) {\n\tfastify.register(${modelCamel}Routes, { prefix: '/${modelPlural}' })\n}\n`,
 				skipIfExists: false
 			})
 
@@ -169,7 +172,7 @@ export default function (plop) {
 					type: 'append',
 					path: 'prisma/seed_admin.js',
 					template: `import { ${modelUpper}_PERMISSIONS } from './permissions_${modelLower}.js'\n`,
-					pattern: /^import/,
+					pattern: /^import bcrypt from 'bcrypt'/m,
 					skipIfExists: false
 				})
 
@@ -177,7 +180,7 @@ export default function (plop) {
 					type: 'append',
 					path: 'prisma/seed_admin.js',
 					template: `\t...${modelUpper}_PERMISSIONS,\n`,
-					pattern: /const PERMISSIONS = \[/,
+					pattern: /const PERMISSIONS = \[\n/,
 					skipIfExists: false
 				})
 			}

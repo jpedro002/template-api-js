@@ -20,7 +20,7 @@ const {{modelName}}UpdateSchema = z.object({
 export function {{modelCamel}}Routes(fastify) {
 	const controller = {{modelCamel}}Controller()
 
-	const listMiddleware = [authenticate]
+	const listMiddleware = [authenticate, authorize('{{modelPlural}}:read')]
 	const createMiddleware = [authenticate, authorize('{{modelPlural}}:create')]
 	const updateMiddleware = [authenticate, authorize('{{modelPlural}}:update')]
 	const deleteMiddleware = [authenticate, authorize('{{modelPlural}}:delete')]
