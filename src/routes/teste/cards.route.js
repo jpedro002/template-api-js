@@ -13,6 +13,17 @@ const CardUpdateSchema = z.object({
       description: z.string().nullish()
 })
 
+const CardSchema = z.object({
+  id: z.uuid({
+	version: 'v7'
+  }).describe('ID do card'),
+  title: z.string().describe('Título do card'),
+  description: z.string().nullable().describe('Descrição do card'),
+  createdAt: z.date().describe('Data de criação (ISO 8601)'),
+  updatedAt: z.date().describe('Data de atualização (ISO 8601)')
+})
+
+
 export function cardRoutes(fastify) {
 	const controller = cardController()
 
@@ -33,7 +44,7 @@ export function cardRoutes(fastify) {
 		schemas: {
 			createSchema: CardCreateSchema,
 			updateSchema: CardUpdateSchema,
-			entitySchema: z.any()
+			entitySchema: CardSchema
 		}
 	})
 
