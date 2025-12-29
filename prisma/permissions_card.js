@@ -3,8 +3,12 @@
 // Execute este arquivo diretamente: node prisma/permissions_card.js
 
 import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
 
-const prisma = new PrismaClient()
+const adapter = new PrismaPg({
+	connectionString: process.env.DATABASE_URL
+})
+const prisma = new PrismaClient({ adapter })
 
 const CARD_PERMISSIONS = [
 	{
@@ -57,6 +61,9 @@ async function seedPermissions() {
 	}
 }
 
-seedPermissions()
+// Executar seed apenas se este arquivo for executado diretamente
+if (import.meta.main) {
+	seedPermissions()
+}
 
 export const CARD_PERMISSIONS_EXPORT = CARD_PERMISSIONS

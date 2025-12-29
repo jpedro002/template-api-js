@@ -1,13 +1,15 @@
+import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcrypt'
 import { CARD_PERMISSIONS_EXPORT as CARD_PERMISSIONS } from './permissions_card.js'
 
-
-const db = new PrismaClient()
+const adapter = new PrismaPg({
+	connectionString: process.env.DATABASE_URL
+})
+const db = new PrismaClient({ adapter })
 
 // Definir permissões por categoria
 const PERMISSIONS = [
-
 	...CARD_PERMISSIONS,
 	{ identifier: '*', name: 'Todas as Permissões', category: 'root' },
 
@@ -43,16 +45,13 @@ const PERMISSIONS = [
 		identifier: 'permissions:delete',
 		name: 'Deletar Permissões',
 		category: 'permissions'
-	},
-
-
+	}
 ]
 
 // Definir roles com suas permissões
 const ROLES_CONFIG = [
 	{
 		name: 'SUPER_ADMIN',
-		description: 'Super administrador com acesso total',
 		permissionIdentifiers: ['*'] // Wildcard para todas as permissões
 	}
 ]
@@ -82,10 +81,9 @@ async function seedRoles() {
 	for (const roleConfig of ROLES_CONFIG) {
 		const role = await db.role.upsert({
 			where: { name: roleConfig.name },
-			update: { description: roleConfig.description },
+			update: {},
 			create: {
 				name: roleConfig.name,
-				description: roleConfig.description,
 				active: true
 			}
 		})

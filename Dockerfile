@@ -1,32 +1,36 @@
-FROM oven/bun:latest AS build
-
-RUN apt-get update && apt-get install -y openssl vim bash curl wget && rm -rf /var/lib/apt/lists/*
+FROM oven/bun:debian AS builder
 
 WORKDIR /app
 
-COPY package.json bun.lockb ./
+COPY package.json bun.lock ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
 
-RUN bun install
+RUN bun install --frozen-lockfile --production
 
-COPY . .
+RUN bun x prisma generate
 
-RUN bun run build
+COPY src ./src
+COPY jsconfig.json ./
 
-RUN bunx prisma generate
+# Imagem final com Bun runtime
+FROM oven/bun:alpine
 
-FROM oven/bun:latest
-
-RUN apt-get update && apt-get install -y openssl vim bash curl tzdata && rm -rf /var/lib/apt/lists/*
-
-ENV TZ=America/Fortaleza
+RUN apk add --no-cache \
+    ca-certificates \
+    openssl \
+    curl
 
 WORKDIR /app
 
-COPY --from=build /app/dist /app/dist
-COPY --from=build /app/node_modules /app/node_modules
-COPY --from=build /app/package.json /app/bun.lockb ./
-COPY --from=build /app/prisma /app/prisma ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/jsconfig.json ./
+
+ENV NODE_ENV=production \
+    TZ=America/Fortaleza
 
 EXPOSE 3000
-
-CMD ["bun", "start"]
+CMD ["bun", "run", "src/index.js"]

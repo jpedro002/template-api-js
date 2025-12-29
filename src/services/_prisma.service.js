@@ -1,23 +1,21 @@
-import fs from 'fs'
-import path from 'path'
+import { PrismaPg } from '@prisma/adapter-pg'
 import { Prisma, PrismaClient } from '@prisma/client'
 import { useUtils } from 'src/helpers'
 
+const adapter = new PrismaPg({
+	connectionString: process.env.DATABASE_URL ?? ''
+})
 const { parseValues, adjustTimezone } = useUtils()
-let prisma
 
-if (process.env.NODE_ENV === 'production') {
-	prisma = new PrismaClient()
-} else {
-	if (!global.prisma) global.prisma = new PrismaClient()
-	prisma = global.prisma
-}
+let prisma = new PrismaClient({ adapter })
 
-// middleware
-prisma.$use(async (params, next) => {
+const middleware = async params => {
 	const { model, args } = params
 	if (model && (args.where || args.data || args.create || args.update)) {
-		const { fields, allModels } = prisma[model].getDatabase()
+		const dbInfo = prisma[model]?.getDatabase?.()
+		if (!dbInfo) return params
+		
+		const { fields, allModels } = dbInfo
 		const { where, data, create, update } = args
 		if (where && Object.keys(where).length)
 			params.args.where = parseValues(fields, where, allModels)
@@ -28,45 +26,44 @@ prisma.$use(async (params, next) => {
 		if (update && Object.keys(update).length)
 			params.args.update = parseValues(fields, update, allModels)
 	}
-	const result = await next(params)
-	return result
-})
+	return params
+}
 
+// Apply extensions with safer error handling
 prisma = prisma.$extends({
 	model: {
 		$allModels: {
 			getDatabase() {
-				const context = Prisma.getExtensionContext(this)
-				const allModels = context.$parent._runtimeDataModel.models
-				const { dbName, ...rest } = allModels[context.$name]
-				return { name: dbName, allModels, ...rest }
+				try {
+					const context = Prisma.getExtensionContext(this)
+					const allModels = context.$parent._runtimeDataModel.models
+					const { dbName, ...rest } = allModels[context.$name]
+					return { name: dbName, allModels, ...rest }
+				} catch (_error) {
+					console.warn(`Warning: getDatabase() not available for this model`)
+					return null
+				}
 			},
 			async truncate() {
 				const context = Prisma.getExtensionContext(this)
 				const database = context.getDatabase()
+				if (!database) throw new Error('Database info not available')
 				const query = `TRUNCATE TABLE ${database.name}`
 				await prisma.$executeRaw(Prisma.raw(query))
 				return 0
-			},
-			async createWithFile(file, { data: body, folder = null }) {
-				const context = Prisma.getExtensionContext(this)
-				const folderName = folder || context.$name
-				const folderPath = path.join(__dirname, '..', 'public', folderName)
-				if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath)
-				fs.rename(file.path, path.join(folderPath, file.filename), err => {
-					if (err) throw new Error('Erro ao mover o arquivo.')
-				})
-				const data = await context.create({ data: body })
-				return data
 			}
 		}
 	},
 	query: {
 		$allModels: {
-			async $allOperations({ args, model, query }) {
-				const { fields } = prisma[model].getDatabase()
+			async $allOperations({ query, ...params }) {
+				const { model, args } = await middleware(params)
 				const result = await query(args)
-				adjustTimezone(result, fields)
+				const dbInfo = prisma[model]?.getDatabase?.()
+				if (dbInfo) {
+					const { fields } = dbInfo
+					adjustTimezone(result, fields)
+				}
 				return result
 			}
 		}

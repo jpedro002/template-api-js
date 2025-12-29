@@ -5,10 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: fiscalize-api
     restart: unless-stopped
-    ports:
-      - '3366:3000'
-    networks:
-      - fiscalize-network
+    network_mode: host
     env_file:
       - .env
     security_opt:
@@ -35,10 +32,4 @@ services:
       retries: 3
       start_period: 40s
 
-volumes:
-  fiscalize_db_volume:
-    driver: local
 
-networks:
-  fiscalize-network:
-    driver: bridge
