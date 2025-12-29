@@ -9,8 +9,7 @@ import swaggerPlugin from 'src/plugins/_swagger'
 import { z } from 'zod'
 import { errorHandler, useUtils } from './helpers'
 import { jwtPlugin } from './plugins'
-import { segurancaRoutes,testeRoutes } from './routes'
-import { settings } from './config'
+import { segurancaRoutes, testeRoutes } from './routes'
 
 export async function createApp() {
 	// biome-ignore lint/correctness/noUnusedVariables: <>
@@ -29,7 +28,7 @@ export async function createApp() {
 	const HomeSchema = {
 		tags: ['API Info'],
 		summary: 'Informações da API',
-		description: 'Retorna informações básicas sobre a API Fiscalize do AGEFIS',
+		description: 'Retorna informações básicas sobre a API',
 		response: {
 			200: z.object({
 				msg: z.string().describe('Mensagem de boas-vindas da API')

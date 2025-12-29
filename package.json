@@ -19,10 +19,6 @@
 		"generate:permissions": "plop 'Adicionar Permissões'",
 		"generate:controller": "plop 'Apenas Controller'"
 	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/henriquemota/fiscalize_api"
-	},
 	"keywords": [
 		"fastify",
 		"api",

@@ -1,9 +1,9 @@
 services:
-  fiscalize-api:
+  api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: fiscalize-api
+    container_name: api
     restart: unless-stopped
     network_mode: host
     env_file:
