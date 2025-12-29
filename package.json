@@ -49,8 +49,6 @@
 		"fastify-plugin": "^5.0.1",
 		"fastify-qs": "^5.0.0",
 		"fastify-type-provider-zod": "^6.0.0",
-		"helmet": "^8.1.0",
-		"mime-types": "3.0.1",
 		"plop": "4.0.4",
 		"uuid": "^11.1.0",
 		"zod": "^4.1.8"
