@@ -2,8 +2,8 @@
 // Padrão: resource:action
 // Execute este arquivo diretamente: node prisma/permissions_card.js
 
-import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from '@prisma/client'
 
 const adapter = new PrismaPg({
 	connectionString: process.env.DATABASE_URL
@@ -36,7 +36,7 @@ const CARD_PERMISSIONS = [
 async function seedPermissions() {
 	try {
 		console.log(`🔐 Criando/Atualizando permissões de cards...`)
-		
+
 		for (const permission of CARD_PERMISSIONS) {
 			await prisma.permission.upsert({
 				where: { identifier: permission.identifier },
@@ -51,7 +51,7 @@ async function seedPermissions() {
 				}
 			})
 		}
-		
+
 		console.log(`✅ Permissões de cards criadas/atualizadas com sucesso!`)
 	} catch (error) {
 		console.error(`❌ Erro ao criar/atualizar permissões:`, error)

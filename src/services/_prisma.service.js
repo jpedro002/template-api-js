@@ -14,7 +14,7 @@ const middleware = async params => {
 	if (model && (args.where || args.data || args.create || args.update)) {
 		const dbInfo = prisma[model]?.getDatabase?.()
 		if (!dbInfo) return params
-		
+
 		const { fields, allModels } = dbInfo
 		const { where, data, create, update } = args
 		if (where && Object.keys(where).length)
