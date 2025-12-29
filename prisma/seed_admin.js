@@ -1,5 +1,5 @@
 import { PrismaPg } from '@prisma/adapter-pg'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from './generated/prisma/client'
 import bcrypt from 'bcrypt'
 import { CARD_PERMISSIONS_EXPORT as CARD_PERMISSIONS } from './permissions_card.js'
 
