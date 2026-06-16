@@ -11,14 +11,15 @@ const UsuarioCreateSchema = z.object({
 	email: z
 		.email('Email inválido')
 		.max(200, 'Email deve ter no máximo 200 caracteres'),
-	password_hash: z
+	password: z
 		.string()
-		.min(1, 'Hash da senha é obrigatório'),
+		.min(8, 'Senha deve ter ao menos 8 caracteres')
+		.max(128, 'Senha deve ter no máximo 128 caracteres'),
 	name: z
 		.string()
 		.min(1, 'Nome é obrigatório')
 		.max(90, 'Nome deve ter no máximo 90 caracteres'),
-	
+
 	active: z.boolean().optional().default(true)
 })
 
@@ -37,11 +38,9 @@ const UsuarioUpdateSchema = z.object({
 		.min(1, 'Nome é obrigatório')
 		.max(90, 'Nome deve ter no máximo 90 caracteres')
 		.optional(),
-	
+
 	active: z.boolean().optional()
 })
-
-
 
 export function usuarioRoutes(fastify) {
 	const controller = usuarioController()
@@ -67,11 +66,12 @@ export function usuarioRoutes(fastify) {
 		}
 	})
 
-	// Rota para atualização de senha
+	// Troca da própria senha: exige apenas autenticação (opera sobre
+	// request.user.id), não a permissão users:read.
 	fastify.route({
 		method: 'POST',
 		url: '/update-password',
-		preHandler: listMiddleware,
+		preHandler: [authenticate],
 		schema: {
 			tags: ['segurança - Usuários'],
 			summary: 'Atualizar senha do usuário',
@@ -81,7 +81,8 @@ export function usuarioRoutes(fastify) {
 				oldPassword: z.string().min(1, 'Senha antiga obrigatória'),
 				newPassword: z
 					.string()
-					.min(6, 'Nova senha deve ter ao menos 6 caracteres')
+					.min(8, 'Nova senha deve ter ao menos 8 caracteres')
+					.max(128, 'Nova senha deve ter no máximo 128 caracteres')
 			}),
 			response: {
 				200: z.object({ success: z.boolean() }),
@@ -103,13 +104,14 @@ export function usuarioRoutes(fastify) {
 			summary: 'Atribuir role a usuário',
 			description: 'Atribui uma role (perfil) a um usuário',
 			params: z.object({
-				userId: z.string(),
-				roleId: z.string()
+				userId: z.string().uuid(),
+				roleId: z.string().uuid()
 			}),
-			body: z.object({
-				assignedBy: z.string().optional(),
-				expiresAt: z.string().datetime().optional()
-			}).optional(),
+			body: z
+				.object({
+					expiresAt: z.string().datetime().optional()
+				})
+				.optional(),
 			response: {
 				200: z.any(),
 				404: z.object({ error: z.string() })
@@ -128,8 +130,8 @@ export function usuarioRoutes(fastify) {
 			summary: 'Remover role de usuário',
 			description: 'Remove uma role (perfil) de um usuário',
 			params: z.object({
-				userId: z.string(),
-				roleId: z.string()
+				userId: z.string().uuid(),
+				roleId: z.string().uuid()
 			}),
 			response: {
 				200: z.object({ success: z.boolean() }),
@@ -149,13 +151,14 @@ export function usuarioRoutes(fastify) {
 			summary: 'Atribuir permissão a usuário',
 			description: 'Atribui uma permissão específica a um usuário',
 			params: z.object({
-				userId: z.string(),
-				permissionId: z.string()
+				userId: z.string().uuid(),
+				permissionId: z.string().uuid()
 			}),
-			body: z.object({
-				grantedBy: z.string().optional(),
-				expiresAt: z.string().datetime().optional()
-			}).optional(),
+			body: z
+				.object({
+					expiresAt: z.string().datetime().optional()
+				})
+				.optional(),
 			response: {
 				200: z.any(),
 				404: z.object({ error: z.string() })
@@ -174,8 +177,8 @@ export function usuarioRoutes(fastify) {
 			summary: 'Remover permissão de usuário',
 			description: 'Remove uma permissão específica de um usuário',
 			params: z.object({
-				userId: z.string(),
-				permissionId: z.string()
+				userId: z.string().uuid(),
+				permissionId: z.string().uuid()
 			}),
 			response: {
 				200: z.object({ success: z.boolean() }),

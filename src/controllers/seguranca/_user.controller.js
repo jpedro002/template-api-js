@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt'
 import { baseController } from 'src/controllers'
-import { prisma } from 'src/services'
+import { authorizationService, prisma } from 'src/services'
 
 function usuarioController() {
 	const select = null
@@ -26,13 +26,22 @@ function usuarioController() {
 				}
 			}
 		},
-		allowedFields: ['id', 'email', 'login', 'name', 'active', 'createdAt', 'updatedAt'],
+		allowedFields: [
+			'id',
+			'email',
+			'login',
+			'name',
+			'active',
+			'createdAt',
+			'updatedAt'
+		],
 		sensitiveFields: ['password_hash', 'senha', 'password', 'token', 'hash']
 	})
 
 	const post = async (request, reply) => {
 		const { body } = request
-		const { password_hash: pwd, email, ...rest } = body
+		// A API recebe "password" em texto puro; o hash é feito no servidor.
+		const { password: pwd, email, ...rest } = body
 
 		const hashedPassword = await bcrypt.hash(pwd, SALT_ROUNDS)
 
@@ -81,40 +90,26 @@ function usuarioController() {
 
 	const assignRole = async (request, reply) => {
 		const { userId, roleId } = request.params
-		const { assignedBy, expiresAt } = request.body || {}
+		const { expiresAt } = request.body || {}
 
-		// Verificar se usuário existe
 		const user = await prisma.User.findUnique({ where: { id: userId } })
 		if (!user) {
 			return reply.code(404).send({ error: 'Usuário não encontrado' })
 		}
 
-		// Verificar se role existe
 		const role = await prisma.Role.findUnique({ where: { id: roleId } })
 		if (!role) {
 			return reply.code(404).send({ error: 'Role não encontrada' })
 		}
 
-		// Criar ou atualizar UserRole
-		const userRole = await prisma.UserRole.upsert({
-			where: {
-				userId_roleId: {
-					userId,
-					roleId
-				}
-			},
-			create: {
-				userId,
-				roleId,
-				assignedBy,
-				expiresAt: expiresAt ? new Date(expiresAt) : null
-			},
-			update: {
-				assignedBy,
-				expiresAt: expiresAt ? new Date(expiresAt) : null,
-				assignedAt: new Date()
-			}
-		})
+		// Quem atribuiu vem do token, nunca do body (evita spoofing). O service
+		// faz o upsert e invalida o cache de permissões do usuário.
+		const userRole = await authorizationService.assignRoleToUser(
+			userId,
+			roleId,
+			request.user.id,
+			expiresAt ? new Date(expiresAt) : null
+		)
 
 		reply.code(200).send(userRole)
 	}
@@ -122,60 +117,37 @@ function usuarioController() {
 	const removeRole = async (request, reply) => {
 		const { userId, roleId } = request.params
 
-		try {
-			await prisma.UserRole.delete({
-				where: {
-					userId_roleId: {
-						userId,
-						roleId
-					}
-				}
-			})
-			reply.code(200).send({ success: true })
-		} catch (error) {
-			if (error.code === 'P2025') {
-				return reply.code(404).send({ error: 'Associação não encontrada' })
-			}
-			throw error
-		}
+		await authorizationService.removeRoleFromUser(
+			userId,
+			roleId,
+			request.user.id
+		)
+		reply.code(200).send({ success: true })
 	}
 
 	const grantPermission = async (request, reply) => {
 		const { userId, permissionId } = request.params
-		const { grantedBy, expiresAt } = request.body || {}
+		const { expiresAt } = request.body || {}
 
-		// Verificar se usuário existe
 		const user = await prisma.User.findUnique({ where: { id: userId } })
 		if (!user) {
 			return reply.code(404).send({ error: 'Usuário não encontrado' })
 		}
 
-		// Verificar se permissão existe
-		const permission = await prisma.Permission.findUnique({ where: { id: permissionId } })
+		const permission = await prisma.Permission.findUnique({
+			where: { id: permissionId }
+		})
 		if (!permission) {
 			return reply.code(404).send({ error: 'Permissão não encontrada' })
 		}
 
-		// Criar ou atualizar UserPermission
-		const userPermission = await prisma.UserPermission.upsert({
-			where: {
-				userId_permissionId: {
-					userId,
-					permissionId
-				}
-			},
-			create: {
-				userId,
-				permissionId,
-				grantedBy,
-				expiresAt: expiresAt ? new Date(expiresAt) : null
-			},
-			update: {
-				grantedBy,
-				expiresAt: expiresAt ? new Date(expiresAt) : null,
-				grantedAt: new Date()
-			}
-		})
+		// grantedBy vem do token, nunca do body. Service invalida o cache.
+		const userPermission = await authorizationService.grantPermissionToUser(
+			userId,
+			permissionId,
+			request.user.id,
+			expiresAt ? new Date(expiresAt) : null
+		)
 
 		reply.code(200).send(userPermission)
 	}
@@ -183,22 +155,12 @@ function usuarioController() {
 	const revokePermission = async (request, reply) => {
 		const { userId, permissionId } = request.params
 
-		try {
-			await prisma.UserPermission.delete({
-				where: {
-					userId_permissionId: {
-						userId,
-						permissionId
-					}
-				}
-			})
-			reply.code(200).send({ success: true })
-		} catch (error) {
-			if (error.code === 'P2025') {
-				return reply.code(404).send({ error: 'Permissão não encontrada' })
-			}
-			throw error
-		}
+		await authorizationService.revokePermissionFromUser(
+			userId,
+			permissionId,
+			request.user.id
+		)
+		reply.code(200).send({ success: true })
 	}
 
 	return {

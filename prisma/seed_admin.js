@@ -45,7 +45,14 @@ const PERMISSIONS = [
 		identifier: 'permissions:delete',
 		name: 'Deletar Permissões',
 		category: 'permissions'
-	}
+	},
+
+	// Gerenciamento avançado de autorização (usado pelas rotas de autorização)
+	{ identifier: 'users:manage', name: 'Gerenciar Autorização de Usuários', category: 'users' },
+	{ identifier: 'permissions:assign', name: 'Conceder Permissões', category: 'permissions' },
+	{ identifier: 'permissions:revoke', name: 'Revogar Permissões', category: 'permissions' },
+	{ identifier: 'roles:assign', name: 'Atribuir Roles', category: 'roles' },
+	{ identifier: 'roles:revoke', name: 'Remover Roles', category: 'roles' }
 ]
 
 // Definir roles com suas permissões

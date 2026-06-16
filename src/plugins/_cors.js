@@ -3,30 +3,27 @@ import fp from 'fastify-plugin'
 import { settings } from 'src/config'
 
 export default fp(async fastify => {
-	console.log('CORS_ORIGIN:', settings.CORS_ORIGIN)
-
-	const allowedOrigins = settings.CORS_ORIGIN
-		? settings.CORS_ORIGIN.split(',')
-		: []
+	const allowedOrigins = (settings.CORS_ORIGIN || '')
+		.split(',')
+		.map(origin => origin.trim())
+		.filter(Boolean)
 
 	fastify.register(cors, {
 		origin: (origin, cb) => {
-			console.log('Received Origin:', origin)
-
+			// Requisições sem Origin (curl, apps mobile, server-to-server)
 			if (!origin) {
 				cb(null, true)
 				return
 			}
 
-			const isAllowed = allowedOrigins.some(allowedOrigin =>
-				origin.includes(allowedOrigin.trim())
-			)
-
-			if (isAllowed) {
+			// Correspondência EXATA. Substring permitiria que
+			// "https://meusite.com.evil.com" passasse no allowlist.
+			if (allowedOrigins.includes(origin)) {
 				cb(null, true)
-			} else {
-				cb(new Error('Not allowed by CORS'), false)
+				return
 			}
+
+			cb(new Error('Not allowed by CORS'), false)
 		},
 		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
 		allowedHeaders: ['Content-Type', 'Authorization'],

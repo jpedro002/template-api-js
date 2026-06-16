@@ -76,7 +76,9 @@ async function requireAdmin(request, reply) {
 
   const roles = await authorizationService.getUserRoles(request.user.id)
 
-  if (!['ADMIN', 'SUPER_ADMIN'].includes(roles[0])) {
+  // Checa TODAS as roles, não apenas a primeira (roles[0]).
+  const isAdmin = roles.some(role => ['ADMIN', 'SUPER_ADMIN'].includes(role))
+  if (!isAdmin) {
     return reply.code(403).send({
       error: 'Forbidden',
       message: 'Acesso restrito a administradores',

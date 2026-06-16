@@ -12,9 +12,7 @@ export const sessionRoutes = fastify => {
 		summary: 'Realizar login no sistema',
 		description: 'Autentica usuário e retorna token JWT',
 		body: z.object({
-			email: z
-				.string()
-				.describe('Email ou login do usuário'),
+			email: z.string().describe('Email ou login do usuário'),
 			password: z
 				.string()
 				.min(1, 'Senha é obrigatória')
@@ -22,11 +20,24 @@ export const sessionRoutes = fastify => {
 		}),
 		response: {
 			200: z.object({
-				token: z.string().describe('Token JWT para autenticação')
+				token: z.string().describe('Token JWT para autenticação'),
+				user: z.object({
+					id: z.string().uuid().describe('ID do usuário (UUID)'),
+					email: z.string().describe('Email do usuário'),
+					login: z.string().describe('Login do usuário'),
+					name: z.string().describe('Nome completo do usuário'),
+					roles: z.array(z.string()).describe('Roles do usuário'),
+					permissions: z.array(z.string()).describe('Permissões do usuário')
+				})
 			}),
 			401: z.object({
 				error: z.string().describe('Tipo do erro'),
 				message: z.string().describe('Mensagem de erro')
+			}),
+			429: z.object({
+				error: z.string().describe('Tipo do erro'),
+				message: z.string().describe('Mensagem de erro'),
+				statusCode: z.number().optional()
 			})
 		}
 	}
@@ -56,7 +67,19 @@ export const sessionRoutes = fastify => {
 		}
 	}
 
-	fastify.post('/session', { schema: LoginSchema }, controller.login)
+	// Rate limit estrito no login para mitigar brute force / credential stuffing.
+	fastify.post(
+		'/session',
+		{
+			schema: LoginSchema,
+			preHandler: fastify.rateLimit({
+				max: 5,
+				windowMs: 60_000,
+				keyPrefix: 'login'
+			})
+		},
+		controller.login
+	)
 
 	fastify.get(
 		'/session',

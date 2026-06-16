@@ -57,7 +57,7 @@ export default fp(async fastify => {
 			showToolbar: 'localhost',
 			operationTitleSource: 'summary',
 			persistAuth: true,
-			telemetry: true,
+			telemetry: false,
 			isEditable: false,
 			isLoading: false,
 			hideModels: false,

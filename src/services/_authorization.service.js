@@ -33,18 +33,23 @@ async function getUserPermissions(userId, forceRefresh = false) {
   }
 
   // Buscar do banco
+  const now = new Date()
   const [directPermissions, rolePermissions] = await Promise.all([
-    // Permissões diretas do usuário
+    // Permissões diretas do usuário (ignorando expiradas)
     prisma.userPermission.findMany({
       where: {
         userId,
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }]
       },
       include: { permission: true }
     }),
-    // Permissões via roles
+    // Permissões via roles (ignorando atribuições expiradas e roles inativas)
     prisma.userRole.findMany({
-      where: { userId },
+      where: {
+        userId,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        role: { active: true }
+      },
       include: {
         role: {
           include: { rolePermissions: { include: { permission: true } } }
@@ -56,15 +61,15 @@ async function getUserPermissions(userId, forceRefresh = false) {
   // Compilar permissões únicas
   const permissions = new Set()
 
-  // Adicionar permissões diretas
+  // Adicionar permissões diretas (apenas permissões ativas)
   directPermissions.forEach(up => {
-    permissions.add(up.permission.identifier)
+    if (up.permission.active) permissions.add(up.permission.identifier)
   })
 
-  // Adicionar permissões dos roles
+  // Adicionar permissões dos roles (apenas permissões ativas)
   rolePermissions.forEach(ur => {
     ur.role.rolePermissions.forEach(rp => {
-      permissions.add(rp.permission.identifier)
+      if (rp.permission.active) permissions.add(rp.permission.identifier)
     })
   })
 
@@ -89,8 +94,13 @@ async function getUserPermissions(userId, forceRefresh = false) {
  * Obtém todos os roles de um usuário
  */
 async function getUserRoles(userId) {
+  const now = new Date()
   const userRoles = await prisma.userRole.findMany({
-    where: { userId },
+    where: {
+      userId,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      role: { active: true }
+    },
     include: { role: true }
   })
   return userRoles.map(ur => ur.role.name)

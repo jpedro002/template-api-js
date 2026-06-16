@@ -1,6 +1,10 @@
 import bcrypt from 'bcrypt'
 import { prisma, authorizationService } from 'src/services'
 
+// Hash "descartável" usado para igualar o tempo de resposta quando o usuário
+// não existe — evita enumeração de usuários por timing attack.
+const DUMMY_HASH = bcrypt.hashSync('timing-attack-mitigation-dummy', 10)
+
 export const sessionController = () => {
 	/**
 	 * @param {import('fastify').FastifyRequest} request
@@ -9,128 +13,110 @@ export const sessionController = () => {
 	const _login = async (request, reply) => {
 		const { email, password } = request.body
 
-		try {
-			const usuario = await prisma.User.findFirst({
-				where: {
-					OR: [
-						{ email: email.toLowerCase() },
-						{ login: email.toLowerCase() }
-					],
-					active: true
-				},
-				select: {
-					email: true,
-					active: true,
-					id: true,
-					password_hash: true,
-					name: true,
-					login: true
-				}
+		const usuario = await prisma.User.findFirst({
+			where: {
+				OR: [{ email: email.toLowerCase() }, { login: email.toLowerCase() }],
+				active: true
+			},
+			select: {
+				email: true,
+				active: true,
+				id: true,
+				password_hash: true,
+				name: true,
+				login: true
+			}
+		})
+
+		// Sempre comparar com um hash (real ou dummy) para tempo constante.
+		const hashToCompare = usuario?.password_hash || DUMMY_HASH
+		const isPasswordValid = await bcrypt.compare(password, hashToCompare)
+
+		// Mensagem genérica: não revela se o usuário existe ou está inativo.
+		if (!usuario || !usuario.active || !isPasswordValid) {
+			return reply.code(401).send({
+				error: 'Unauthorized',
+				message: 'Usuário ou senha inválidos'
 			})
+		}
 
-			if (!usuario) {
-				throw new Error('Usuário ou senha inválidos')
-			}
+		const [permissions, roles] = await Promise.all([
+			authorizationService.getUserPermissions(usuario.id),
+			authorizationService.getUserRoles(usuario.id)
+		])
 
-			if (!usuario.active) {
-				throw new Error('Usuário inativo')
-			}
+		// Token enxuto: apenas identidade. Permissões/roles são buscadas no
+		// servidor a cada requisição, então NÃO são embutidas no JWT — isso
+		// evita permissões desatualizadas presas no token até a expiração.
+		const token = request.server.generateToken({
+			id: usuario.id,
+			email: usuario.email,
+			login: usuario.login,
+			name: usuario.name
+		})
 
-			const isPasswordValid = await bcrypt.compare(
-				password,
-				usuario.password_hash
-			)
-
-			if (!isPasswordValid) {
-				throw new Error('Usuário ou senha inválidos')
-			}
-
-			// Obter permissões e roles
-			const permissions = await authorizationService.getUserPermissions(usuario.id)
-			const roles = await authorizationService.getUserRoles(usuario.id)
-
-			const token = request.server.generateToken({
+		return reply.send({
+			user: {
 				id: usuario.id,
 				email: usuario.email,
 				login: usuario.login,
 				name: usuario.name,
-				permissions,
-				roles
-			})
-
-			return reply.send({
-				user: {
-					id: usuario.id,
-					email: usuario.email,
-					login: usuario.login,
-					name: usuario.name,
-					roles,
-					permissions
-				},
-				token
-			})
-		} catch (error) {
-			if (error instanceof Error) {
-				return reply.code(400).send({
-					error: 'Unauthorized',
-					message: error.message
-				})
-			}
-			throw error
-		}
+				roles,
+				permissions
+			},
+			token
+		})
 	}
 
 	/**
-	 * @param {import('fastify').FastifyRequest & { user?: {id: number} }} request
+	 * @param {import('fastify').FastifyRequest & { user?: {id: string} }} request
 	 * @param {import('fastify').FastifyReply} reply
 	 */
 	const getSession = async (request, reply) => {
-		try {
-			const userId = request.user?.id
+		const userId = request.user?.id
 
-			if (!userId) {
-				throw new Error('Token inválido')
-			}
-
-			const usuario = await prisma.User.findUnique({
-				where: {
-					id: userId,
-					active: true
-				},
-				omit: {
-					password_hash: true
-				}
+		if (!userId) {
+			return reply.code(401).send({
+				error: 'Unauthorized',
+				message: 'Token inválido'
 			})
-
-			if (!usuario) {
-				throw new Error('Usuário não encontrado ou inativo')
-			}
-
-		const roles = await authorizationService.getUserRoles(userId)
-		const permissions = await authorizationService.getUserPermissions(userId, true)
-
-			return reply.send({
-				usuario: {
-					id: usuario.id,
-					email: usuario.email,
-					login: usuario.login,
-					name: usuario.name,
-					roles,
-					permissions,
-					createdAt: usuario.createdAt,
-					updatedAt: usuario.updatedAt,
-					active: usuario.active
-				}
-			})
-		} catch (error) {
-			if (error instanceof Error) {
-				return reply.code(401).send({
-					error: 'Unauthorized',
-					message: error.message
-				})
-			}
-			throw error
 		}
+
+		const usuario = await prisma.User.findUnique({
+			where: {
+				id: userId,
+				active: true
+			},
+			omit: {
+				password_hash: true
+			}
+		})
+
+		if (!usuario) {
+			return reply.code(401).send({
+				error: 'Unauthorized',
+				message: 'Usuário não encontrado ou inativo'
+			})
+		}
+
+		const [roles, permissions] = await Promise.all([
+			authorizationService.getUserRoles(userId),
+			authorizationService.getUserPermissions(userId, true)
+		])
+
+		return reply.send({
+			usuario: {
+				id: usuario.id,
+				email: usuario.email,
+				login: usuario.login,
+				name: usuario.name,
+				roles,
+				permissions,
+				createdAt: usuario.createdAt,
+				updatedAt: usuario.updatedAt,
+				active: usuario.active
+			}
+		})
 	}
 
 	return {

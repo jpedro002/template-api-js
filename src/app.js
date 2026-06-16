@@ -5,6 +5,7 @@ import {
 	validatorCompiler
 } from 'fastify-type-provider-zod'
 import corsPlugin from 'src/plugins/_cors'
+import rateLimitPlugin from 'src/plugins/_rate-limit'
 import swaggerPlugin from 'src/plugins/_swagger'
 import { z } from 'zod'
 import { errorHandler, useUtils } from './helpers'
@@ -23,6 +24,7 @@ export async function createApp() {
 	await server.register(corsPlugin)
 	await server.register(swaggerPlugin)
 	await server.register(jwtPlugin)
+	await server.register(rateLimitPlugin)
 	await server.register(fastifyQs, { parseArrays: true })
 
 	const HomeSchema = {
